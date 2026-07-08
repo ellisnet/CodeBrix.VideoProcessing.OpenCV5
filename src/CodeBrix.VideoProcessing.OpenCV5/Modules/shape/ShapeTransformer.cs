@@ -1,0 +1,95 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+using CodeBrix.VideoProcessing.OpenCV5.Internal.Vectors;
+
+namespace CodeBrix.VideoProcessing.OpenCV5; //was previously: OpenCvSharp;
+
+/// <summary>
+/// Abstract base class for shape transformation algorithms.
+/// </summary>
+public abstract class ShapeTransformer : Algorithm
+{
+    /// <inheritdoc />
+    protected ShapeTransformer(IntPtr smartPtr, IntPtr rawPtr, Action<IntPtr> release)
+        : base(smartPtr, rawPtr, release) { }
+
+    /// <summary>
+    /// Creates a base-typed cv::Ptr&lt;ShapeTransformer&gt;* for use with SetTransformAlgorithm.
+    /// The caller is responsible for deleting it via shape_Ptr_ShapeTransformer_delete.
+    /// </summary>
+    internal abstract IntPtr CreateBaseSmartPtr();
+
+    /// <summary>
+    /// Estimate the transformation parameters of the current transformer algorithm, based on point matches.
+    /// </summary>
+    /// <param name="transformingShape">Contour defining first shape.</param>
+    /// <param name="targetShape">Contour defining second shape (to which the first will be transformed).</param>
+    /// <param name="matches">Vector of matching points between the two contours.</param>
+    public virtual void EstimateTransformation(
+        InputArray transformingShape,
+        InputArray targetShape,
+        IEnumerable<DMatch> matches)
+    {
+        ThrowIfDisposed();
+        if (matches is null)
+            throw new ArgumentNullException(nameof(matches));
+
+        using var matchesVec = new StdVector<DMatch>(matches);
+        NativeMethods.HandleException(
+            NativeMethods.shape_ShapeTransformer_estimateTransformation(
+                Handle, transformingShape.Proxy, targetShape.Proxy, matchesVec.CvPtr));
+
+        GC.KeepAlive(transformingShape.Source);
+        GC.KeepAlive(targetShape.Source);
+    }
+
+    /// <summary>
+    /// Apply a transformation to a contour, given a pre-estimated transformation.
+    /// </summary>
+    /// <param name="input">Contour (set of points) to apply the transformation to.</param>
+    /// <param name="output">Output contour. If null, only the cost is returned without writing the output.</param>
+    /// <returns>The transformation cost.</returns>
+    public virtual float ApplyTransformation(InputArray input, OutputArray output = default)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.shape_ShapeTransformer_applyTransformation(
+                Handle, input.Proxy, output.Proxy, out var ret));
+
+        GC.KeepAlive(input.Source);
+
+        return ret;
+    }
+
+    /// <summary>
+    /// Apply a transformation to an image.
+    /// </summary>
+    /// <param name="transformingImage">Input image to be transformed.</param>
+    /// <param name="output">Output image.</param>
+    /// <param name="flags">Image interpolation method. Default: InterpolationFlags.Linear.</param>
+    /// <param name="borderMode">Border extrapolation method. Default: BorderTypes.Constant.</param>
+    /// <param name="borderValue">Value used for BorderTypes.Constant borders. Default: black.</param>
+    public virtual void WarpImage(
+        InputArray transformingImage,
+        OutputArray output,
+        InterpolationFlags flags = InterpolationFlags.Linear,
+        BorderTypes borderMode = BorderTypes.Constant,
+        Scalar? borderValue = null)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.shape_ShapeTransformer_warpImage(
+                Handle,
+                transformingImage.Proxy,
+                output.Proxy,
+                (int)flags,
+                (int)borderMode,
+                borderValue.GetValueOrDefault(Scalar.All(0))));
+
+        GC.KeepAlive(transformingImage.Source);
+    }
+}

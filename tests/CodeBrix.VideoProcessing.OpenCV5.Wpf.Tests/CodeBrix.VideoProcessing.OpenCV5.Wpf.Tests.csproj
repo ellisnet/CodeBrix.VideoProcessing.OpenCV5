@@ -1,0 +1,55 @@
+<Project>
+  <!--
+    Conditional SDK imports, same pattern as the .Wpf library project: on
+    non-Windows hosts the plain SDK is used, the two WPF-dependent test files
+    are excluded, and the project builds an empty test assembly so the
+    solution restores/builds everywhere. The tests only RUN on Windows.
+  -->
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" Condition="'$(OS)' != 'Windows_NT'" />
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk.WindowsDesktop" Condition="'$(OS)' == 'Windows_NT'" />
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+  <!-- On non-Windows the assembly is empty; opt out of test discovery so
+       `dotnet test` on the solution does not fail with "no test is available". -->
+  <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
+    <IsTestProject>false</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
+    <Compile Remove="BitmapSourceConverterTests.cs;WriteableBitmapConverterTests.cs" />
+    <None Include="BitmapSourceConverterTests.cs;WriteableBitmapConverterTests.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\CodeBrix.VideoProcessing.OpenCV5.Wpf\CodeBrix.VideoProcessing.OpenCV5.Wpf.csproj" />
+    <ProjectReference Include="..\..\src\CodeBrix.VideoProcessing.OpenCV5\CodeBrix.VideoProcessing.OpenCV5.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <!-- StaFact adds a Microsoft.WindowsDesktop.App FrameworkReference, which
+         does not resolve on non-Windows hosts — and the STA tests are excluded
+         there anyway, so the package is Windows-only. -->
+    <PackageReference Include="Xunit.StaFact" Version="3.0.13" Condition="'$(OS)' == 'Windows_NT'" />
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="coverlet.collector" Version="8.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" Condition="'$(OS)' != 'Windows_NT'" />
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk.WindowsDesktop" Condition="'$(OS)' == 'Windows_NT'" />
+</Project>

@@ -1,0 +1,278 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+using CodeBrix.VideoProcessing.OpenCV5.Internal.Vectors;
+
+namespace CodeBrix.VideoProcessing.OpenCV5; //was previously: OpenCvSharp;
+
+static partial class Cv2
+{
+    /// <summary>
+    /// Groups the object candidate rectangles.
+    /// </summary>
+    /// <param name="rectList"> Input/output vector of rectangles. Output vector includes retained and grouped rectangles.</param>
+    /// <param name="groupThreshold">Minimum possible number of rectangles minus 1. The threshold is used in a group of rectangles to retain it.</param>
+    /// <param name="eps"></param>
+    public static void GroupRectangles(IList<Rect> rectList, int groupThreshold, double eps = 0.2)
+    {
+        if (rectList is null)
+            throw new ArgumentNullException(nameof(rectList));
+
+        using var rectListVec = new StdVector<Rect>(rectList);
+
+        NativeMethods.HandleException(
+            NativeMethods.objdetect_groupRectangles1(rectListVec.CvPtr, groupThreshold, eps));
+
+        ClearAndAddRange(rectList, rectListVec.ToArray());
+    }
+
+    /// <summary>
+    /// Groups the object candidate rectangles.
+    /// </summary>
+    /// <param name="rectList"> Input/output vector of rectangles. Output vector includes retained and grouped rectangles.</param>
+    /// <param name="weights"></param>
+    /// <param name="groupThreshold">Minimum possible number of rectangles minus 1. The threshold is used in a group of rectangles to retain it.</param>
+    /// <param name="eps">Relative difference between sides of the rectangles to merge them into a group.</param>
+    public static void GroupRectangles(IList<Rect> rectList, out int[] weights, int groupThreshold, double eps = 0.2)
+    {
+        if (rectList is null)
+            throw new ArgumentNullException(nameof(rectList));
+
+        using var rectListVec = new StdVector<Rect>(rectList);
+        using var weightsVec = new StdVector<int>();
+
+        NativeMethods.HandleException(
+            NativeMethods.objdetect_groupRectangles2(rectListVec.CvPtr, weightsVec.CvPtr, groupThreshold, eps));
+
+        ClearAndAddRange(rectList, rectListVec.ToArray());
+        weights = weightsVec.ToArray();
+    }
+
+    /// <summary>
+    /// Groups the object candidate rectangles.
+    /// </summary>
+    /// <param name="rectList"></param>
+    /// <param name="groupThreshold"></param>
+    /// <param name="eps"></param>
+    /// <param name="weights"></param>
+    /// <param name="levelWeights"></param>
+    public static void GroupRectangles(IList<Rect> rectList, int groupThreshold, double eps, out int[] weights, out double[] levelWeights)
+    {
+        if (rectList is null)
+            throw new ArgumentNullException(nameof(rectList));
+
+        using var rectListVec = new StdVector<Rect>(rectList);
+        using var weightsVec = new StdVector<int>();
+        using var levelWeightsVec = new StdVector<double>();
+
+        NativeMethods.HandleException(
+            NativeMethods.objdetect_groupRectangles3(
+                rectListVec.CvPtr, groupThreshold, eps, weightsVec.CvPtr, levelWeightsVec.CvPtr));
+
+        ClearAndAddRange(rectList, rectListVec.ToArray());
+        weights = weightsVec.ToArray();
+        levelWeights = levelWeightsVec.ToArray();
+    }
+
+    /// <summary>
+    /// Groups the object candidate rectangles.
+    /// </summary>
+    /// <param name="rectList"></param>
+    /// <param name="rejectLevels"></param>
+    /// <param name="levelWeights"></param>
+    /// <param name="groupThreshold"></param>
+    /// <param name="eps"></param>
+    public static void GroupRectangles(IList<Rect> rectList, out int[] rejectLevels, out double[] levelWeights, int groupThreshold, double eps = 0.2)
+    {
+        if (rectList is null)
+            throw new ArgumentNullException(nameof(rectList));
+
+        using var rectListVec = new StdVector<Rect>(rectList);
+        using var rejectLevelsVec = new StdVector<int>();
+        using var levelWeightsVec = new StdVector<double>();
+
+        NativeMethods.HandleException(
+            NativeMethods.objdetect_groupRectangles4(
+                rectListVec.CvPtr, rejectLevelsVec.CvPtr, levelWeightsVec.CvPtr, groupThreshold, eps));
+
+        ClearAndAddRange(rectList, rectListVec.ToArray());
+        rejectLevels = rejectLevelsVec.ToArray();
+        levelWeights = levelWeightsVec.ToArray();
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="rectList"></param>
+    /// <param name="foundWeights"></param>
+    /// <param name="foundScales"></param>
+    /// <param name="detectThreshold"></param>
+    /// <param name="winDetSize"></param>
+    public static void GroupRectanglesMeanshift(IList<Rect> rectList, out double[] foundWeights,
+        out double[] foundScales, double detectThreshold = 0.0, Size? winDetSize = null)
+    {
+        if (rectList is null)
+            throw new ArgumentNullException(nameof(rectList));
+
+        var winDetSize0 = winDetSize.GetValueOrDefault(new Size(64, 128));
+
+        using var rectListVec = new StdVector<Rect>(rectList);
+        using var foundWeightsVec = new StdVector<double>();
+        using var foundScalesVec = new StdVector<double>();
+
+        NativeMethods.HandleException(
+            NativeMethods.objdetect_groupRectangles_meanshift(
+                rectListVec.CvPtr, foundWeightsVec.CvPtr, foundScalesVec.CvPtr, detectThreshold, winDetSize0));
+
+        ClearAndAddRange(rectList, rectListVec.ToArray());
+        foundWeights = foundWeightsVec.ToArray();
+        foundScales = foundScalesVec.ToArray();
+    }
+
+    private static void ClearAndAddRange<T>(ICollection<T> list, IEnumerable<T> values)
+    {
+        list.Clear();
+        foreach (var t in values)
+        {
+            list.Add(t);
+        }
+    }
+
+    /// <summary>
+    /// Checks whether the image contains chessboard of the specific size or not.
+    /// </summary>
+    /// <param name="img"></param>
+    /// <param name="size"></param>
+    /// <returns></returns>
+    public static bool CheckChessboard(InputArray img, Size size)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.objdetect_checkChessboard(img.Proxy, size, out var ret));
+        GC.KeepAlive(img.Source);
+        return ret != 0;
+    }
+
+    /// <summary>
+    /// Finds the positions of internal corners of the chessboard using a sector based approach.
+    /// </summary>
+    /// <param name="image">image Source chessboard view. It must be an 8-bit grayscale or color image.</param>
+    /// <param name="patternSize">Number of inner corners per a chessboard row and column
+    /// (patternSize = Size(points_per_row, points_per_column) = Size(columns, rows) ).</param>
+    /// <param name="corners">Output array of detected corners.</param>
+    /// <param name="flags">flags Various operation flags that can be zero or a combination of the ChessboardFlags values.</param>
+    /// <returns></returns>
+    public static bool FindChessboardCornersSB(
+        InputArray image, Size patternSize, OutputArray corners, ChessboardFlags flags = 0)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.objdetect_findChessboardCornersSB_OutputArray(
+                image.Proxy, patternSize, corners.Proxy, (int) flags, out var ret));
+
+        GC.KeepAlive(image.Source);
+        GC.KeepAlive(corners.Source);
+        return ret != 0;
+    }
+
+    /// <summary>
+    /// Finds the positions of internal corners of the chessboard using a sector based approach.
+    /// </summary>
+    /// <param name="image">image Source chessboard view. It must be an 8-bit grayscale or color image.</param>
+    /// <param name="patternSize">Number of inner corners per a chessboard row and column
+    /// (patternSize = Size(points_per_row, points_per_column) = Size(columns, rows) ).</param>
+    /// <param name="corners">Output array of detected corners.</param>
+    /// <param name="flags">flags Various operation flags that can be zero or a combination of the ChessboardFlags values.</param>
+    /// <returns></returns>
+    public static bool FindChessboardCornersSB(
+        InputArray image, Size patternSize, out Point2f[] corners, ChessboardFlags flags = 0)
+    {
+        using var cornersVec = new StdVector<Point2f>();
+        NativeMethods.HandleException(
+            NativeMethods.objdetect_findChessboardCornersSB_vector(
+                image.Proxy, patternSize, cornersVec.CvPtr, (int) flags, out var ret));
+
+        corners = cornersVec.ToArray();
+        GC.KeepAlive(image.Source);
+        return ret != 0;
+    }
+
+    /// <summary>
+    /// finds subpixel-accurate positions of the chessboard corners
+    /// </summary>
+    /// <param name="img"></param>
+    /// <param name="corners"></param>
+    /// <param name="regionSize"></param>
+    /// <returns></returns>
+    public static bool Find4QuadCornerSubpix(InputArray img, InputOutputArray corners, Size regionSize)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.objdetect_find4QuadCornerSubpix_InputArray(
+                img.Proxy, corners.Proxy, regionSize, out var ret));
+        GC.KeepAlive(img.Source);
+        return ret != 0;
+    }
+    /// <summary>
+    /// finds subpixel-accurate positions of the chessboard corners
+    /// </summary>
+    /// <param name="img"></param>
+    /// <param name="corners"></param>
+    /// <param name="regionSize"></param>
+    /// <returns></returns>
+    public static bool Find4QuadCornerSubpix(InputArray img, Point2f[] corners, Size regionSize)
+    {
+        if (corners is null)
+            throw new ArgumentNullException(nameof(corners));
+
+        using var cornersVec = new StdVector<Point2f>(corners);
+        NativeMethods.HandleException(
+            NativeMethods.objdetect_find4QuadCornerSubpix_vector(
+                img.Proxy, cornersVec.CvPtr, regionSize, out var ret));
+        GC.KeepAlive(img.Source);
+
+        var newCorners = cornersVec.ToArray();
+        for (var i = 0; i < corners.Length; i++)
+        {
+            corners[i] = newCorners[i];
+        }
+
+        return ret != 0;
+    }
+
+    /// <summary>
+    /// Renders the detected chessboard corners.
+    /// </summary>
+    /// <param name="image">Destination image. It must be an 8-bit color image.</param>
+    /// <param name="patternSize">Number of inner corners per a chessboard row and column (patternSize = cv::Size(points_per_row,points_per_column)).</param>
+    /// <param name="corners">Array of detected corners, the output of findChessboardCorners.</param>
+    /// <param name="patternWasFound">Parameter indicating whether the complete board was found or not. The return value of findChessboardCorners() should be passed here.</param>
+    public static void DrawChessboardCorners(InputOutputArray image, Size patternSize,
+        InputArray corners, bool patternWasFound)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.objdetect_drawChessboardCorners_InputArray(
+                image.Proxy, patternSize, corners.Proxy, patternWasFound ? 1 : 0));
+        GC.KeepAlive(corners.Source);
+    }
+
+    /// <summary>
+    /// Renders the detected chessboard corners.
+    /// </summary>
+    /// <param name="image">Destination image. It must be an 8-bit color image.</param>
+    /// <param name="patternSize">Number of inner corners per a chessboard row and column (patternSize = cv::Size(points_per_row,points_per_column)).</param>
+    /// <param name="corners">Array of detected corners, the output of findChessboardCorners.</param>
+    /// <param name="patternWasFound">Parameter indicating whether the complete board was found or not. The return value of findChessboardCorners() should be passed here.</param>
+    [SuppressMessage("Maintainability", "CA1508: Avoid dead conditional code")]
+    public static void DrawChessboardCorners(InputOutputArray image, Size patternSize,
+        IEnumerable<Point2f> corners, bool patternWasFound)
+    {
+        if (corners is null)
+            throw new ArgumentNullException(nameof(corners));
+
+        var cornersArray = corners as Point2f[] ?? corners.ToArray();
+        NativeMethods.HandleException(
+            NativeMethods.objdetect_drawChessboardCorners_array(
+                image.Proxy, patternSize, cornersArray, cornersArray.Length,
+                patternWasFound ? 1 : 0));
+    }
+}

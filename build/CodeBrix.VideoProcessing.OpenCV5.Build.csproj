@@ -1,0 +1,130 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<!--
+	========================================================================
+	CodeBrix.VideoProcessing.OpenCV5 NuGet packaging driver
+	========================================================================
+	Mirrors the CodeBrix.Platform pack-only driver pattern.
+
+	This project intentionally compiles nothing of value: its job is to
+	materialize + verify the vendored native libraries, pack the six runtime
+	packages from their nuspecs, and pack the managed core package — all with
+	ONE shared date-stamped $(BuildVersion), so a full run yields a
+	version-locked set.
+
+	Usage (Linux — packs core + the 6 runtime packages):
+
+	    dotnet build build/CodeBrix.VideoProcessing.OpenCV5.Build.csproj -c Release
+
+	Usage (Windows — packs ONLY the .Wpf package, pinned to the version the
+	Linux run produced, same pattern as CodeBrix.Platform's .MacOS package):
+
+	    dotnet build build\CodeBrix.VideoProcessing.OpenCV5.Build.csproj -c Release -p:BuildVersion=1.x.y.z
+
+	Packages land in:  {repo}/nugets/$(Configuration)/$(BuildVersion)/
+	========================================================================
+	-->
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<!-- This driver is never itself a package. -->
+		<IsPackable>false</IsPackable>
+		<IsPublishable>false</IsPublishable>
+		<EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+		<Nullable>disable</Nullable>
+		<!-- This project has no source files; silence the empty-compile warning. -->
+		<NoWarn>$(NoWarn);CS2008</NoWarn>
+	</PropertyGroup>
+
+	<!--
+	Canonical CodeBrix date-stamped version (computed once per pack run).
+	Format: 1.<years-since-2026>.<dayOfYear>.<minuteOfDay>, all from UTC now.
+	This mirrors the canonical version block used in the packable .csproj
+	files; here it is the single source of truth for the whole pack run.
+
+	OVERRIDE: pass -p:BuildVersion=1.x.y.z to reuse an EXISTING version instead
+	of stamping a fresh one. Required when a package must be built on a second
+	machine and stay in the same version-locked set — the .Wpf package can only
+	be produced on Windows; building it there with -p:BuildVersion=<the Linux
+	run's version> keeps the whole family set at one version.
+	(The Condition below makes the date-stamp a fallback; an explicitly
+	supplied BuildVersion wins.)
+	-->
+	<PropertyGroup>
+		<_VersionBaseYear>2026</_VersionBaseYear>
+		<_VersionYears>$([MSBuild]::Subtract($([System.DateTime]::UtcNow.Year), $(_VersionBaseYear)))</_VersionYears>
+		<_VersionDayOfYear>$([System.DateTime]::UtcNow.DayOfYear)</_VersionDayOfYear>
+		<_VersionMinuteOfDay>$([System.Convert]::ToInt32($([System.Math]::Floor($([System.DateTime]::UtcNow.TimeOfDay.TotalMinutes)))))</_VersionMinuteOfDay>
+		<BuildVersion Condition="'$(BuildVersion)'==''">1.$(_VersionYears).$(_VersionDayOfYear).$(_VersionMinuteOfDay)</BuildVersion>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<_RepoRoot>$(MSBuildThisFileDirectory)..\</_RepoRoot>
+		<_NuspecDir>$(MSBuildThisFileDirectory)nuget</_NuspecDir>
+		<_PackShim>$(MSBuildThisFileDirectory)nuget-pack-shim\CodeBrix.Pack.Shim.csproj</_PackShim>
+		<_PackOutputDir>$(_RepoRoot)nugets\$(Configuration)\$(BuildVersion)</_PackOutputDir>
+		<_NativeDir>$(_RepoRoot)native_libraries</_NativeDir>
+	</PropertyGroup>
+
+	<!-- The six nuspec-driven native runtime packages (Linux pack run only). -->
+	<ItemGroup>
+		<_Nuspec Include="$(_NuspecDir)\CodeBrix.VideoProcessing.OpenCV5.WindowsX64.nuspec" />
+		<_Nuspec Include="$(_NuspecDir)\CodeBrix.VideoProcessing.OpenCV5.WindowsArm64.nuspec" />
+		<_Nuspec Include="$(_NuspecDir)\CodeBrix.VideoProcessing.OpenCV5.LinuxX64.nuspec" />
+		<_Nuspec Include="$(_NuspecDir)\CodeBrix.VideoProcessing.OpenCV5.LinuxArm64.nuspec" />
+		<_Nuspec Include="$(_NuspecDir)\CodeBrix.VideoProcessing.OpenCV5.MacOSX64.nuspec" />
+		<_Nuspec Include="$(_NuspecDir)\CodeBrix.VideoProcessing.OpenCV5.MacOSArm64.nuspec" />
+	</ItemGroup>
+
+	<!--
+	MaterializeNatives: decompress every vendored native (xz -dkf keeps the
+	.xz and overwrites any stale raw file), then verify the SHA-256 of every
+	raw binary against the committed provenance manifest. A mismatch FAILS
+	the pack run — never ship a native that differs from the recorded
+	upstream artifact. Linux/macOS only (the Windows run packs .Wpf, which
+	ships no natives).
+	-->
+	<Target Name="MaterializeNatives" Condition="'$(OS)' != 'Windows_NT'">
+		<Message Importance="high" Text="Materializing vendored natives (xz -dkf) in $(_NativeDir) ..." />
+		<Exec Command="find . -name '*.xz' -exec xz -dkf {} +" WorkingDirectory="$(_NativeDir)" />
+		<Message Importance="high" Text="Verifying raw natives against SHA256SUMS.txt ..." />
+		<Exec Command="sha256sum -c SHA256SUMS.txt" WorkingDirectory="$(_NativeDir)" />
+	</Target>
+
+	<Target Name="PackCodeBrix"
+			AfterTargets="Build"
+			Condition="'$(Configuration)'=='Release'"
+			DependsOnTargets="MaterializeNatives">
+
+		<!-- Capture git branch/commit for the nuspec <repository> tokens. -->
+		<Exec Command="git rev-parse --abbrev-ref HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true" WorkingDirectory="$(_RepoRoot)">
+			<Output TaskParameter="ConsoleOutput" PropertyName="_GitBranch" />
+		</Exec>
+		<Exec Command="git rev-parse HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true" WorkingDirectory="$(_RepoRoot)">
+			<Output TaskParameter="ConsoleOutput" PropertyName="_GitCommit" />
+		</Exec>
+		<PropertyGroup>
+			<_GitBranch Condition="'$(_GitBranch)'==''">unknown</_GitBranch>
+			<_GitCommit Condition="'$(_GitCommit)'==''">unknown</_GitCommit>
+		</PropertyGroup>
+
+		<MakeDir Directories="$(_PackOutputDir)" />
+
+		<Message Importance="high" Text="CodeBrix pack: version $(BuildVersion) -> $(_PackOutputDir)" />
+
+		<!-- Linux/macOS run: the 6 native runtime packages (nuspec-driven, via
+		     the SDK packer through the shim) plus the managed core package. -->
+		<Exec Condition="'$(OS)' != 'Windows_NT'"
+		      Command="dotnet pack &quot;$(_PackShim)&quot; -p:CbxNuspec=&quot;%(_Nuspec.Identity)&quot; -p:CbxNuspecBasePath=&quot;$(_NuspecDir)&quot; -p:CbxVersion=$(BuildVersion) -p:CbxBranch=$(_GitBranch) -p:CbxCommit=$(_GitCommit) --output &quot;$(_PackOutputDir)&quot; --nologo --verbosity minimal" />
+		<Exec Condition="'$(OS)' != 'Windows_NT'"
+		      Command="dotnet pack &quot;$(_RepoRoot)src\CodeBrix.VideoProcessing.OpenCV5\CodeBrix.VideoProcessing.OpenCV5.csproj&quot; -c Release -p:BuildVersion=$(BuildVersion) --output &quot;$(_PackOutputDir)&quot; --nologo --verbosity minimal" />
+
+		<!-- Windows run: ONLY the .Wpf package (needs UseWPF; pin the version
+		     with -p:BuildVersion so it joins the Linux run's version-locked set). -->
+		<Exec Condition="'$(OS)' == 'Windows_NT'"
+		      Command="dotnet pack &quot;$(_RepoRoot)src\CodeBrix.VideoProcessing.OpenCV5.Wpf\CodeBrix.VideoProcessing.OpenCV5.Wpf.csproj&quot; -c Release -p:BuildVersion=$(BuildVersion) --output &quot;$(_PackOutputDir)&quot; --nologo --verbosity minimal" />
+
+	</Target>
+
+</Project>

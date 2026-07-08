@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+	<metadata minClientVersion="5.0">
+		<id>CodeBrix.VideoProcessing.OpenCV5.WindowsArm64.ApacheLicenseForever</id>
+		<version>$codebrixversion$</version>
+		<title>CodeBrix.VideoProcessing.OpenCV5.WindowsArm64</title>
+		<authors>Jeremy Ellis and contributors</authors>
+		<requireLicenseAcceptance>true</requireLicenseAcceptance>
+		<projectUrl>https://github.com/ellisnet/CodeBrix.VideoProcessing.OpenCV5</projectUrl>
+		<license type="expression">Apache-2.0</license>
+		<icon>icon-codebrix-128.png</icon>
+		<readme>README.md</readme>
+		<description>Native OpenCV 5 binding library (OpenCvSharpExtern) for CodeBrix.VideoProcessing.OpenCV5 on Windows ARM64. Install alongside CodeBrix.VideoProcessing.OpenCV5.ApacheLicenseForever.</description>
+		<copyright>Copyright 2008-2026 shimat and the OpenCvSharp contributors. Copyright (C) 2000-2026, Intel Corporation, OpenCV Foundation, and the OpenCV contributors. Copyright (c) 2026 Jeremy Ellis and contributors.</copyright>
+		<tags>opencv;opencv5;native;runtime;windows;arm64;CodeBrix</tags>
+		<repository type="git" url="https://github.com/ellisnet/CodeBrix.VideoProcessing.OpenCV5.git" branch="$branch$" commit="$commitid$" />
+	</metadata>
+	<files>
+		<file src="..\..\icon-codebrix-128.png" target="/" />
+		<file src="..\..\README.md" target="/" />
+		<file src="..\..\AGENT-README.txt" target="/" />
+		<file src="..\..\THIRD-PARTY-NOTICES.txt" target="/" />
+		<file src="..\..\native_libraries\runtimes\win-arm64\native\OpenCvSharpExtern.dll" target="runtimes\win-arm64\native" />
+	</files>
+</package>

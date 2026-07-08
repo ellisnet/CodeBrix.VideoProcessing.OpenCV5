@@ -1,0 +1,28 @@
+using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+#pragma warning disable 1591
+#pragma warning disable CA1401 // P/Invokes should not be visible
+#pragma warning disable CA1707 // Underscore
+#pragma warning disable CA2101 // Specify marshaling for P/Invoke string arguments
+#pragma warning disable IDE1006 // Naming style
+
+
+namespace CodeBrix.VideoProcessing.OpenCV5.Internal; //was previously: OpenCvSharp.Internal;
+
+static partial class NativeMethods
+{
+    [LibraryImport(DllExtern), UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial ExceptionStatus wechat_qrcode_create1([MarshalAs(UnmanagedType.LPStr)] string detector_model_path,
+        [MarshalAs(UnmanagedType.LPStr)] string super_resolution_model_path, out IntPtr ptr);
+
+    [LibraryImport(DllExtern), UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial ExceptionStatus wechat_qrcode_WeChatQRCode_detectAndDecode(OpenCvSafeHandle obj, in InputArrayProxy inputImage, IntPtr points, IntPtr texts);
+
+    [LibraryImport(DllExtern), UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial ExceptionStatus wechat_qrcode_WeChatQRCode_detectAndDecode_points(OpenCvSafeHandle obj, in InputArrayProxy inputImage, IntPtr points, IntPtr texts);
+
+
+    [LibraryImport(DllExtern), UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial ExceptionStatus wechat_qrcode_delete(IntPtr ptr);
+}

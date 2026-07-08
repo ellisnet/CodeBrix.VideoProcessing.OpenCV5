@@ -1,0 +1,427 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using CodeBrix.VideoProcessing.OpenCV5.Detail;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+using CodeBrix.VideoProcessing.OpenCV5.Internal.Util;
+using CodeBrix.VideoProcessing.OpenCV5.Internal.Vectors;
+
+namespace CodeBrix.VideoProcessing.OpenCV5; //was previously: OpenCvSharp;
+
+#pragma warning disable 1591
+// ReSharper disable InconsistentNaming
+
+/// <summary>
+/// High level image stitcher. 
+/// It's possible to use this class without being aware of the entire stitching 
+/// pipeline. However, to be able to achieve higher stitching stability and 
+/// quality of the final images at least being familiar with the theory is recommended
+/// </summary>
+public sealed class Stitcher : CvObject
+{
+        #region Enum
+
+    public const int ORIG_RESOL = -1;
+
+    /// <summary>
+    /// Status code
+    /// </summary>
+    public enum Status
+    {
+        OK = 0,
+        ErrorNeedMoreImgs = 1,
+        ErrorHomographyEstFail = 2,
+        ErrorCameraParamsAdjustFail = 3
+    }
+
+    public enum Mode
+    {
+        /// <summary>
+        /// Mode for creating photo panoramas. Expects images under perspective
+        /// transformation and projects resulting pano to sphere.
+        /// </summary>
+        Panorama = 0,
+
+        /// <summary>
+        /// Mode for composing scans. Expects images under affine transformation does
+        /// not compensate exposure by default.
+        /// </summary>
+        Scans = 1,
+    }
+
+    #endregion
+
+    #region Init & Disposal
+
+    /// <summary>
+    /// Constructor
+    /// </summary>
+    /// <param name="p">cv::Stitcher*</param>
+    private Stitcher(IntPtr p)
+    {
+        NativeMethods.HandleException(NativeMethods.stitching_Ptr_Stitcher_get(p, out var rawPtr));
+        SetSafeHandle(new OpenCvPtrSafeHandle(rawPtr, ownsHandle: true,
+            releaseAction: _ => NativeMethods.HandleException(NativeMethods.stitching_Ptr_Stitcher_delete(p))));
+    }
+
+    /// <summary>
+    /// Creates a Stitcher configured in one of the stitching modes.
+    /// </summary>
+    /// <param name="mode">Scenario for stitcher operation. This is usually determined by source of images
+    /// to stitch and their transformation.Default parameters will be chosen for operation in given scenario.</param>
+    public static Stitcher Create(Mode mode = Mode.Panorama)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.stitching_Stitcher_create((int)mode, out var ret));
+        return new Stitcher(ret);
+    }
+
+    #endregion
+
+    #region Properties
+
+    public double RegistrationResol
+    {
+        get
+        {
+            NativeMethods.HandleException(
+                NativeMethods.stitching_Stitcher_registrationResol(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            NativeMethods.HandleException(
+                NativeMethods.stitching_Stitcher_setRegistrationResol(Handle, value));
+        }
+    }
+
+    public double SeamEstimationResol
+    {
+        get
+        {
+            NativeMethods.HandleException(
+                NativeMethods.stitching_Stitcher_seamEstimationResol(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            NativeMethods.HandleException(
+                NativeMethods.stitching_Stitcher_setSeamEstimationResol(Handle, value));
+        }
+    }
+
+    public double CompositingResol
+    {
+        get
+        {
+            NativeMethods.HandleException(
+                NativeMethods.stitching_Stitcher_compositingResol(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            NativeMethods.HandleException(
+                NativeMethods.stitching_Stitcher_setCompositingResol(Handle, value));
+        }
+    }
+
+    public double PanoConfidenceThresh
+    {
+        get
+        {
+            NativeMethods.HandleException(
+                NativeMethods.stitching_Stitcher_panoConfidenceThresh(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            NativeMethods.HandleException(
+                NativeMethods.stitching_Stitcher_setPanoConfidenceThresh(Handle, value));
+        }
+    }
+
+    public bool WaveCorrection
+    {
+        get
+        {
+            NativeMethods.HandleException(
+                NativeMethods.stitching_Stitcher_waveCorrection(Handle, out var ret));
+            return ret != 0;
+        }
+        set
+        {
+            NativeMethods.HandleException(
+                NativeMethods.stitching_Stitcher_setWaveCorrection(Handle, value ? 1 : 0));
+        }
+    }
+
+    public WaveCorrectKind WaveCorrectKind
+    {
+        get
+        {
+            NativeMethods.HandleException(
+                NativeMethods.stitching_Stitcher_waveCorrectKind(Handle, out var ret));
+            return (WaveCorrectKind)ret;
+        }
+        set
+        {
+            NativeMethods.HandleException(
+                NativeMethods.stitching_Stitcher_setWaveCorrectKind(Handle, (int)value));
+        }
+    }
+
+    /*
+    public FeaturesFinder FeaturesFinder
+    {
+        get => throw new NotImplementedException();
+        set => throw new NotImplementedException();
+    }
+
+    public FeaturesMatcher FeaturesMatcher
+    {
+        get => throw new NotImplementedException();
+        set => throw new NotImplementedException();
+    }
+
+    public Mat MatchingMask
+    {
+        get => throw new NotImplementedException();
+        set => throw new NotImplementedException();
+    }
+
+    public BundleAdjusterBase BundleAdjuster
+    {
+        get => throw new NotImplementedException();
+        set => throw new NotImplementedException();
+    }
+
+    public WarperCreator Warper
+    {
+        get => throw new NotImplementedException();
+        set => throw new NotImplementedException();
+    }
+
+    public ExposureCompensator ExposureCompensator
+    {
+        get => throw new NotImplementedException();
+        set => throw new NotImplementedException();
+    }
+
+    public SeamFinder SeamFinder
+    {
+        get => throw new NotImplementedException();
+        set => throw new NotImplementedException();
+    }
+
+    public Blender Blender
+    {
+        get => throw new NotImplementedException();
+        set => throw new NotImplementedException();
+    }
+    */
+
+    // TODO this should be method?
+    public IReadOnlyList<int> Component
+    {
+        get
+        {
+            using var componentVec = new StdVector<int>();
+            NativeMethods.HandleException(
+                NativeMethods.stitching_Stitcher_component(Handle, componentVec.CvPtr));
+            return componentVec.ToArray();
+        }
+    }
+
+    //public CameraParams[] Cameras => throw new NotImplementedException();
+
+    public double WorkScale
+    {
+        get
+        {
+            NativeMethods.HandleException(
+                NativeMethods.stitching_Stitcher_workScale(Handle, out var ret));
+            return ret;
+        }
+    }
+
+    #endregion
+
+    #region Methods
+
+    public Status EstimateTransform(InputArray images)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.stitching_Stitcher_estimateTransform_InputArray1(Handle, images.Proxy, out var ret));
+
+        GC.KeepAlive(images.Source);
+        return (Status)ret;
+    }
+
+    public Status EstimateTransform(InputArray images, Rect[][] rois)
+    {
+        if (rois is null)
+            throw new ArgumentNullException(nameof(rois));
+
+        using var roisPointer = new ArrayAddress2<Rect>(rois);
+        NativeMethods.HandleException(
+            NativeMethods.stitching_Stitcher_estimateTransform_InputArray2(Handle, images.Proxy, roisPointer.GetPointer(), roisPointer.GetDim1Length(), roisPointer.GetDim2Lengths(), out var ret));
+
+        GC.KeepAlive(images.Source);
+        return (Status)ret;
+    }
+
+    public Status EstimateTransform(IEnumerable<Mat> images)
+    {
+        if (images is null)
+            throw new ArgumentNullException(nameof(images));
+
+        var imagesPtrs = images.Select(x => x.CvPtr).ToArray();
+
+        NativeMethods.HandleException(
+            NativeMethods.stitching_Stitcher_estimateTransform_MatArray1(
+                Handle, imagesPtrs, imagesPtrs.Length, out var ret));
+
+        GC.KeepAlive(images);
+        return (Status)ret;
+    }
+
+    public Status EstimateTransform(IEnumerable<Mat> images, Rect[][] rois)
+    {
+        if (images is null)
+            throw new ArgumentNullException(nameof(images));
+        if (rois is null)
+            throw new ArgumentNullException(nameof(rois));
+
+        var imagesPtrs = images.Select(x => x.CvPtr).ToArray();
+        using var roisPointer = new ArrayAddress2<Rect>(rois);
+        NativeMethods.HandleException(
+            NativeMethods.stitching_Stitcher_estimateTransform_MatArray2(
+                Handle, imagesPtrs, imagesPtrs.Length,
+                roisPointer.GetPointer(), roisPointer.GetDim1Length(), roisPointer.GetDim2Lengths(),
+                out var ret));
+
+        GC.KeepAlive(images);
+        return (Status)ret;
+    }
+
+    public Status ComposePanorama(OutputArray pano)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.stitching_Stitcher_composePanorama1(Handle, pano.Proxy, out var ret));
+
+        GC.KeepAlive(pano.Source);
+        return (Status)ret;
+    }
+
+    public Status ComposePanorama(InputArray images, OutputArray pano)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.stitching_Stitcher_composePanorama2_InputArray(Handle, images.Proxy, pano.Proxy, out var ret));
+
+        GC.KeepAlive(images.Source);
+        GC.KeepAlive(pano.Source);
+        return (Status)ret;
+    }
+
+    public Status ComposePanorama(IEnumerable<Mat> images, OutputArray pano)
+    {
+        if (images is null)
+            throw new ArgumentNullException(nameof(images));
+
+        var imagesPtrs = images.Select(x => x.CvPtr).ToArray();
+        NativeMethods.HandleException(
+            NativeMethods.stitching_Stitcher_composePanorama2_MatArray(Handle, imagesPtrs, imagesPtrs.Length, pano.Proxy, out var ret));
+
+        GC.KeepAlive(images);
+        GC.KeepAlive(pano.Source);
+        return (Status)ret;
+    }
+
+    /// <summary>
+    /// Try to stitch the given images.
+    /// </summary>
+    /// <param name="images">Input images.</param>
+    /// <param name="pano">Final pano.</param>
+    /// <returns>Status code.</returns>
+    public Status Stitch(InputArray images, OutputArray pano)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.stitching_Stitcher_stitch1_InputArray(Handle, images.Proxy, pano.Proxy, out var ret));
+
+        GC.KeepAlive(images.Source);
+        GC.KeepAlive(pano.Source);
+
+        return (Status)ret;
+    }
+
+    /// <summary>
+    /// Try to stitch the given images.
+    /// </summary>
+    /// <param name="images">Input images.</param>
+    /// <param name="pano">Final pano.</param>
+    /// <returns>Status code.</returns>
+    public Status Stitch(IEnumerable<Mat> images, OutputArray pano)
+    {
+        if (images is null)
+            throw new ArgumentNullException(nameof(images));
+
+        var imagesPtrs = images.Select(x => x.CvPtr).ToArray();
+
+        NativeMethods.HandleException(
+            NativeMethods.stitching_Stitcher_stitch1_MatArray(Handle, imagesPtrs, imagesPtrs.Length, pano.Proxy, out var ret));
+
+        GC.KeepAlive(images);
+        GC.KeepAlive(pano.Source);
+
+        return (Status)ret;
+    }
+
+    /// <summary>
+    /// Try to stitch the given images.
+    /// </summary>
+    /// <param name="images">Input images.</param>
+    /// <param name="rois">Region of interest rectangles.</param>
+    /// <param name="pano">Final pano.</param>
+    /// <returns>Status code.</returns>
+    public Status Stitch(InputArray images, Rect[][] rois, OutputArray pano)
+    {
+        if (rois is null)
+            throw new ArgumentNullException(nameof(rois));
+
+        using var roisPointer = new ArrayAddress2<Rect>(rois);
+        NativeMethods.HandleException(
+            NativeMethods.stitching_Stitcher_stitch2_InputArray(Handle, images.Proxy, roisPointer.GetPointer(), roisPointer.GetDim1Length(), roisPointer.GetDim2Lengths(), pano.Proxy, out var ret));
+
+        GC.KeepAlive(images.Source);
+        GC.KeepAlive(pano.Source);
+        return (Status)ret;
+    }
+
+    /// <summary>
+    /// Try to stitch the given images.
+    /// </summary>
+    /// <param name="images">Input images.</param>
+    /// <param name="rois">Region of interest rectangles.</param>
+    /// <param name="pano">Final pano.</param>
+    /// <returns>Status code.</returns>
+    public Status Stitch(IEnumerable<Mat> images, Rect[][] rois, OutputArray pano)
+    {
+        if (images is null)
+            throw new ArgumentNullException(nameof(images));
+        if (rois is null)
+            throw new ArgumentNullException(nameof(rois));
+
+        var imagesPtrs = images.Select(x => x.CvPtr).ToArray();
+
+        using var roisPointer = new ArrayAddress2<Rect>(rois);
+        NativeMethods.HandleException(
+            NativeMethods.stitching_Stitcher_stitch2_MatArray(Handle, imagesPtrs, imagesPtrs.Length, roisPointer.GetPointer(), roisPointer.GetDim1Length(), roisPointer.GetDim2Lengths(), pano.Proxy, out var ret));
+
+        GC.KeepAlive(images);
+        GC.KeepAlive(pano.Source);
+        return (Status)ret;
+    }
+
+    #endregion
+
+}

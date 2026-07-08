@@ -1,0 +1,11 @@
+---
+BasedOnStyle: Microsoft
+ColumnLimit: 0
+PointerAlignment: Right
+SortIncludes: Never
+
+# CVAPI(ReturnType) is a return-type qualifier macro, not a function call.
+# Registering it as an attribute keeps it on the same line as the function name.
+AttributeMacros:
+  - CVAPI
+BreakAfterAttributes: Never

@@ -1,0 +1,66 @@
+using System;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+
+// ReSharper disable IdentifierTypo
+// ReSharper disable InconsistentNaming
+// ReSharper disable CommentTypo
+
+namespace CodeBrix.VideoProcessing.OpenCV5.XPhoto; //was previously: OpenCvSharp.XPhoto;
+
+/// <summary>
+/// Gray-world white balance algorithm.
+/// </summary>
+public class GrayworldWB : WhiteBalancer
+{
+    /// <summary>
+    /// Constructor
+    /// </summary>
+    private GrayworldWB(IntPtr smartPtr, IntPtr rawPtr)
+        : base(smartPtr, rawPtr, p => NativeMethods.HandleException(NativeMethods.xphoto_Ptr_GrayworldWB_delete(p)))
+    { }
+    /// <summary>
+    /// Creates an instance of GrayworldWB
+    /// </summary>
+    /// <returns></returns>
+    public static GrayworldWB Create()
+    {
+        NativeMethods.HandleException(
+            NativeMethods.xphoto_createGrayworldWB(out var smartPtr));
+        NativeMethods.HandleException(NativeMethods.xphoto_Ptr_GrayworldWB_get(smartPtr, out var rawPtr));
+        return new GrayworldWB(smartPtr, rawPtr);
+    }
+
+    /// <summary>
+    /// Maximum saturation
+    /// </summary>
+    public float SaturationThreshold
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.xphoto_GrayworldWB_SaturationThreshold_get(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.xphoto_GrayworldWB_SaturationThreshold_set(Handle, value));
+        }
+    }
+
+    /// <summary>
+    /// Applies white balancing to the input image.
+    /// </summary>
+    /// <param name="src">Input image</param>
+    /// <param name="dst">White balancing result</param>
+    public override void BalanceWhite(InputArray src, OutputArray dst)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.xphoto_GrayworldWB_balanceWhite(Handle, src.Proxy, dst.Proxy));
+
+        GC.KeepAlive(src.Source);
+        GC.KeepAlive(dst.Source);
+    }
+}

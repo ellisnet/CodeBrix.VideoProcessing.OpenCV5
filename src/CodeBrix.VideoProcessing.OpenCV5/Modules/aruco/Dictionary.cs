@@ -1,0 +1,181 @@
+using System;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+
+namespace CodeBrix.VideoProcessing.OpenCV5.Aruco; //was previously: OpenCvSharp.Aruco;
+
+/// <summary>
+/// Dictionary/Set of markers. It contains the inner codification
+/// </summary>
+public class Dictionary : CvObject
+{
+    /// <summary>
+    /// 
+    /// </summary>
+    internal Dictionary(IntPtr ptr)
+    {
+        InitSafeHandle(ptr);
+    }
+
+    /// <summary>
+    /// Creates from native pointer with ownership control.
+    /// </summary>
+    internal Dictionary(IntPtr ptr, bool ownsHandle)
+    {
+        InitSafeHandle(ptr, ownsHandle);
+    }
+
+    /// <summary>
+    /// Releases unmanaged resources
+    /// </summary>
+
+    private void InitSafeHandle(IntPtr p, bool ownsHandle = true)
+    {
+        SetSafeHandle(new OpenCvPtrSafeHandle(p, ownsHandle,
+            static h => NativeMethods.HandleException(NativeMethods.aruco_Dictionary_delete(h))));
+    }
+    
+    /// <summary>
+    /// Marker code information
+    /// </summary>
+    public Mat BytesList
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.aruco_Dictionary_getBytesList(Handle, out var ret));
+            return new Mat(ret);
+        }
+    }
+
+    /// <summary>
+    /// Number of bits per dimension.
+    /// </summary>
+    public int MarkerSize
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.aruco_Dictionary_getMarkerSize(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.aruco_Dictionary_setMarkerSize(Handle, value));
+        }
+    }
+
+    /// <summary>
+    /// Maximum number of bits that can be corrected.
+    /// </summary>
+    public int MaxCorrectionBits
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.aruco_Dictionary_getMaxCorrectionBits(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.aruco_Dictionary_setMaxCorrectionBits(Handle, value));
+        }
+    }
+    
+    /// <summary>
+    /// Given a matrix of bits. Returns whether if marker is identified or not.
+    /// It returns by reference the correct id (if any) and the correct rotation
+    /// </summary>
+    /// <param name="onlyBits"></param>
+    /// <param name="idx"></param>
+    /// <param name="rotation"></param>
+    /// <param name="maxCorrectionRate"></param>
+    /// <returns></returns>
+    public bool Identify(Mat onlyBits, out int idx, out int rotation, double maxCorrectionRate)
+    {
+        if (onlyBits is null)
+            throw new ArgumentNullException(nameof(onlyBits));
+        onlyBits.ThrowIfDisposed();
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.aruco_Dictionary_identify(Handle, onlyBits.CvPtr, out idx, out rotation, maxCorrectionRate, out var ret));
+        
+        return ret != 0;
+    }
+    
+    /// <summary>
+    /// Returns the distance of the input bits to the specific id.
+    /// If allRotations is true, the four possible bits rotation are considered
+    /// </summary>
+    /// <param name="bits"></param>
+    /// <param name="id"></param>
+    /// <param name="allRotations"></param>
+    /// <returns></returns>
+    public int GetDistanceToId(InputArray bits, int id, bool allRotations = true)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.aruco_Dictionary_getDistanceToId(Handle, bits.Proxy, id, allRotations ? 1 : 0, out var ret));
+        
+        return ret;
+    }
+    
+    /// <summary>
+    /// Generate a canonical marker image
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="sidePixels"></param>
+    /// <param name="img"></param>
+    /// <param name="borderBits"></param>
+    public void GenerateImageMarker(int id, int sidePixels, OutputArray img, int borderBits = 1)
+    {
+        ThrowIfDisposed();
+        
+        NativeMethods.HandleException(
+            NativeMethods.aruco_Dictionary_generateImageMarker(Handle, id, sidePixels, img.Proxy, borderBits));
+        
+    }
+    
+    /// <summary>
+    /// Transform matrix of bits to list of bytes in the 4 rotations
+    /// </summary>
+    /// <param name="bits"></param>
+    /// <returns></returns>
+    public static Mat GetByteListFromBits(Mat bits)
+    {
+        if (bits is null)
+            throw new ArgumentNullException(nameof(bits));
+        bits.ThrowIfDisposed();
+
+        var ret = new Mat();
+        NativeMethods.HandleException(
+            NativeMethods.aruco_Dictionary_getByteListFromBits(bits.CvPtr, ret.CvPtr));
+        return ret;
+    }
+    
+    /// <summary>
+    /// Transform list of bytes to matrix of bits
+    /// </summary>
+    /// <param name="byteList"></param>
+    /// <param name="markerSize"></param>
+    /// <returns></returns>
+    public static Mat GetBitsFromByteList(Mat byteList, int markerSize)
+    {
+        if (byteList is null)
+            throw new ArgumentNullException(nameof(byteList));
+        byteList.ThrowIfDisposed();
+        
+        var ret = new Mat();
+        NativeMethods.HandleException(
+            NativeMethods.aruco_Dictionary_getBitsFromByteList(byteList.CvPtr, markerSize, ret.CvPtr));
+        return ret;
+    }
+}

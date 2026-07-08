@@ -1,0 +1,160 @@
+using System;
+using System.Diagnostics.CodeAnalysis;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+
+namespace CodeBrix.VideoProcessing.OpenCV5.XImgProc.Segmentation; //was previously: OpenCvSharp.XImgProc.Segmentation;
+
+/// <inheritdoc />
+/// <summary>
+/// Regroup multiple strategies for the selective search segmentation algorithm
+/// </summary>
+public class SelectiveSearchSegmentationStrategyMultiple : SelectiveSearchSegmentationStrategy
+{
+    /// <summary>
+    /// Creates instance by raw pointer
+    /// </summary>
+    private SelectiveSearchSegmentationStrategyMultiple(IntPtr smartPtr, IntPtr rawPtr)
+        : base(smartPtr, rawPtr, p => NativeMethods.HandleException(NativeMethods.ximgproc_segmentation_Ptr_SelectiveSearchSegmentationStrategyMultiple_delete(p)))
+    { }
+
+    /// <summary>
+    /// Set a initial image
+    /// </summary>
+    /// <param name="img">The input image. Any number of channel can be provided</param>
+    /// <param name="regions">A segementation of the image. The parameter must be the same size of img.</param>
+    /// <param name="sizes">The sizes of different regions</param>
+    /// <param name="imageId">If not set to -1, try to cache pre-computations. If the same set og (img, regions, size) is used, the image_id need to be the same.</param>
+    public new virtual void SetImage(InputArray img, InputArray regions, InputArray sizes, int imageId = -1)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_SelectiveSearchSegmentationStrategy_setImage(
+                Handle, img.Proxy, regions.Proxy, sizes.Proxy, imageId));
+
+        GC.KeepAlive(img.Source);
+        GC.KeepAlive(regions.Source);
+        GC.KeepAlive(sizes.Source);
+    }
+
+    /// <summary>
+    /// Return the score between two regions (between 0 and 1)
+    /// </summary>
+    /// <param name="r1">The first region</param>
+    /// <param name="r2">The second region</param>
+    [SuppressMessage("Microsoft.Design", "CA1716: Identifiers should not match keywords")]
+    public new virtual float Get(int r1, int r2)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_SelectiveSearchSegmentationStrategy_get(Handle, r1, r2, out var ret));
+        return ret;
+    }
+
+    /// <summary>
+    /// Inform the strategy that two regions will be merged
+    /// </summary>
+    /// <param name="r1">The first region</param>
+    /// <param name="r2">The second region</param>
+    public new virtual void Merge(int r1, int r2)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_SelectiveSearchSegmentationStrategy_merge(Handle, r1, r2));
+    }
+
+    /// <summary>
+    /// Create a new multiple strategy
+    /// </summary>
+    /// <returns></returns>
+    public static SelectiveSearchSegmentationStrategyMultiple Create()
+    {
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_createSelectiveSearchSegmentationStrategyMultiple0(out var smartPtr));
+        NativeMethods.HandleException(NativeMethods.ximgproc_segmentation_Ptr_SelectiveSearchSegmentationStrategyMultiple_get(smartPtr, out var rawPtr));
+        return new SelectiveSearchSegmentationStrategyMultiple(smartPtr, rawPtr);
+    }
+
+    /// <summary>
+    /// Create a new multiple strategy and set one subtrategy
+    /// </summary>
+    /// <param name="s1">The first strategy</param>
+    /// <returns></returns>
+    public static SelectiveSearchSegmentationStrategyMultiple Create(
+        SelectiveSearchSegmentationStrategy s1)
+    {
+        if (s1 is null)
+            throw new ArgumentNullException(nameof(s1));
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_createSelectiveSearchSegmentationStrategyMultiple1(s1.PtrObj, out var smartPtr));
+        NativeMethods.HandleException(NativeMethods.ximgproc_segmentation_Ptr_SelectiveSearchSegmentationStrategyMultiple_get(smartPtr, out var rawPtr));
+        return new SelectiveSearchSegmentationStrategyMultiple(smartPtr, rawPtr);
+    }
+
+    /// <summary>
+    /// Create a new multiple strategy and set one subtrategy
+    /// </summary>
+    /// <param name="s1">The first strategy</param>
+    /// <param name="s2">The second strategy</param>
+    /// <returns></returns>
+    public static SelectiveSearchSegmentationStrategyMultiple Create(
+        SelectiveSearchSegmentationStrategy s1, SelectiveSearchSegmentationStrategy s2)
+    {
+        if (s1 is null)
+            throw new ArgumentNullException(nameof(s1));
+        if (s2 is null)
+            throw new ArgumentNullException(nameof(s2));
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_createSelectiveSearchSegmentationStrategyMultiple2(s1.PtrObj, s2.PtrObj, out var smartPtr));
+        NativeMethods.HandleException(NativeMethods.ximgproc_segmentation_Ptr_SelectiveSearchSegmentationStrategyMultiple_get(smartPtr, out var rawPtr));
+        return new SelectiveSearchSegmentationStrategyMultiple(smartPtr, rawPtr);
+    }
+
+    /// <summary>
+    /// Create a new multiple strategy and set one subtrategy
+    /// </summary>
+    /// <param name="s1">The first strategy</param>
+    /// <param name="s2">The second strategy</param>
+    /// <param name="s3">The third strategy</param>
+    /// <returns></returns>
+    public static SelectiveSearchSegmentationStrategyMultiple Create(
+        SelectiveSearchSegmentationStrategy s1, SelectiveSearchSegmentationStrategy s2, SelectiveSearchSegmentationStrategy s3)
+    {
+        if (s1 is null)
+            throw new ArgumentNullException(nameof(s1));
+        if (s2 is null)
+            throw new ArgumentNullException(nameof(s2));
+        if (s3 is null)
+            throw new ArgumentNullException(nameof(s3));
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_createSelectiveSearchSegmentationStrategyMultiple3(s1.PtrObj, s2.PtrObj, s3.PtrObj, out var smartPtr));
+        NativeMethods.HandleException(NativeMethods.ximgproc_segmentation_Ptr_SelectiveSearchSegmentationStrategyMultiple_get(smartPtr, out var rawPtr));
+        return new SelectiveSearchSegmentationStrategyMultiple(smartPtr, rawPtr);
+    }
+
+    /// <summary>
+    /// Create a new multiple strategy and set one subtrategy
+    /// </summary>
+    /// <param name="s1">The first strategy</param>
+    /// <param name="s2">The second strategy</param>
+    /// <param name="s3">The third strategy</param>
+    /// <param name="s4">The forth strategy</param>
+    /// <returns></returns>
+    public static SelectiveSearchSegmentationStrategyMultiple Create(
+        SelectiveSearchSegmentationStrategy s1, SelectiveSearchSegmentationStrategy s2, SelectiveSearchSegmentationStrategy s3, SelectiveSearchSegmentationStrategy s4)
+    {
+        if (s1 is null)
+            throw new ArgumentNullException(nameof(s1));
+        if (s2 is null)
+            throw new ArgumentNullException(nameof(s2));
+        if (s3 is null)
+            throw new ArgumentNullException(nameof(s3));
+        if (s4 is null)
+            throw new ArgumentNullException(nameof(s4));
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_createSelectiveSearchSegmentationStrategyMultiple4(s1.PtrObj, s2.PtrObj, s3.PtrObj, s4.PtrObj, out var smartPtr));
+        NativeMethods.HandleException(NativeMethods.ximgproc_segmentation_Ptr_SelectiveSearchSegmentationStrategyMultiple_get(smartPtr, out var rawPtr));
+        return new SelectiveSearchSegmentationStrategyMultiple(smartPtr, rawPtr);
+    }
+
+    }

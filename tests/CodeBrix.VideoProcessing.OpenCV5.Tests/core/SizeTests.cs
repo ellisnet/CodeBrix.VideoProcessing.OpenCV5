@@ -1,0 +1,19 @@
+using Xunit;
+
+namespace CodeBrix.VideoProcessing.OpenCV5.Tests.Core; //was previously: OpenCvSharp.Tests.Core;
+
+public class SizeTests
+{
+    [Fact]
+    // ReSharper disable once InconsistentNaming
+    public void Size2f()
+    {
+        var obj = new Size2f(0.5, 0.5);
+        Assert.Equal(0.5, obj.Width, 6);
+        Assert.Equal(0.5, obj.Height, 6);
+
+        obj = new Size2f(0.5f, 0.5f);
+        Assert.Equal(0.5f, obj.Width, 1e-6);
+        Assert.Equal(0.5f, obj.Height, 1e-6);
+    } 
+}

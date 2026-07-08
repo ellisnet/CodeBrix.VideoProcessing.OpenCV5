@@ -1,0 +1,52 @@
+using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+#pragma warning disable 1591
+#pragma warning disable CA1401 // P/Invokes should not be visible
+#pragma warning disable CA2101 // Specify marshaling for P/Invoke string arguments
+#pragma warning disable IDE1006 // Naming style
+
+namespace CodeBrix.VideoProcessing.OpenCV5.Internal; //was previously: OpenCvSharp.Internal;
+
+static partial class NativeMethods
+{
+    [LibraryImport(DllExtern), UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial ExceptionStatus ml_KNearest_getDefaultK(OpenCvSafeHandle obj, out int returnValue);
+    [LibraryImport(DllExtern), UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial ExceptionStatus ml_KNearest_setDefaultK(OpenCvSafeHandle obj, int val);
+
+    [LibraryImport(DllExtern), UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial ExceptionStatus ml_KNearest_getIsClassifier(OpenCvSafeHandle obj, out int returnValue);
+    [LibraryImport(DllExtern), UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial ExceptionStatus ml_KNearest_setIsClassifier(OpenCvSafeHandle obj, int val);
+        
+    [LibraryImport(DllExtern), UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial ExceptionStatus ml_KNearest_getEmax(OpenCvSafeHandle obj, out int returnValue);
+    [LibraryImport(DllExtern), UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial ExceptionStatus ml_KNearest_setEmax(OpenCvSafeHandle obj, int val);
+
+    [LibraryImport(DllExtern), UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial ExceptionStatus ml_KNearest_getAlgorithmType(OpenCvSafeHandle obj, out int returnValue);
+    [LibraryImport(DllExtern), UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial ExceptionStatus ml_KNearest_setAlgorithmType(OpenCvSafeHandle obj, int val);
+
+    [LibraryImport(DllExtern), UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial ExceptionStatus ml_KNearest_findNearest(OpenCvSafeHandle obj, in InputArrayProxy samples, int k,
+        in OutputArrayProxy results, in OutputArrayProxy neighborResponses, in OutputArrayProxy dist, out float returnValue);
+
+    [LibraryImport(DllExtern), UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial ExceptionStatus ml_KNearest_create(out IntPtr returnValue);
+
+    [LibraryImport(DllExtern), UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial ExceptionStatus ml_Ptr_KNearest_delete(IntPtr obj);
+
+    [LibraryImport(DllExtern), UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial ExceptionStatus ml_Ptr_KNearest_get(IntPtr obj, out IntPtr returnValue);
+        
+    [LibraryImport(DllExtern), UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial ExceptionStatus ml_KNearest_load([MarshalAs(UnmanagedType.LPStr)] string filePath, out IntPtr returnValue);
+
+    [LibraryImport(DllExtern), UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial ExceptionStatus ml_KNearest_loadFromString([MarshalAs(UnmanagedType.LPStr)] string strModel, out IntPtr returnValue);
+}

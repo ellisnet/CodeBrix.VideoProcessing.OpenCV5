@@ -1,0 +1,91 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using CodeBrix.VideoProcessing.OpenCV5.Internal.Util;
+
+namespace CodeBrix.VideoProcessing.OpenCV5.Internal.Vectors; //was previously: OpenCvSharp.Internal.Vectors;
+
+/// <summary> 
+/// </summary>
+public class VectorOfVectorKeyPoint : CvObject, IStdVector<KeyPoint[]>
+{
+    /// <summary>
+    /// Constructor
+    /// </summary>
+    public VectorOfVectorKeyPoint()
+    {
+        var p = NativeMethods.vector_vector_KeyPoint_new1();
+        SetSafeHandle(new OpenCvPtrSafeHandle(p, ownsHandle: false, releaseAction: null));
+    }
+        
+    /// <summary>
+    /// Constructor
+    /// </summary>
+    /// <param name="values"></param>
+    public VectorOfVectorKeyPoint(KeyPoint[][] values)
+    {
+        if (values is null)
+            throw new ArgumentNullException(nameof(values));
+
+        using var aa = new ArrayAddress2<KeyPoint>(values);
+        var p = NativeMethods.vector_vector_KeyPoint_new3(
+            aa.GetPointer(), aa.GetDim1Length(), aa.GetDim2Lengths());
+        SetSafeHandle(new OpenCvPtrSafeHandle(p, ownsHandle: false, releaseAction: null));
+    }
+        
+    /// <summary>
+    /// Releases unmanaged resources
+    /// </summary>
+    protected override void DisposeUnmanaged()
+    {
+        NativeMethods.vector_vector_KeyPoint_delete(CvPtr);
+        base.DisposeUnmanaged();
+    }
+
+    /// <summary>
+    /// vector.size()
+    /// </summary>
+    public int GetSize1()
+    {
+        var res = NativeMethods.vector_vector_KeyPoint_getSize1(Handle);
+        return (int)res;
+    }
+
+    /// <summary>
+    /// vector.size()
+    /// </summary>
+    public int Size => GetSize1();
+
+    /// <summary>
+    /// vector[i].size()
+    /// </summary>
+    public IReadOnlyList<long> GetSize2()
+    {
+        var size1 = GetSize1();
+        var size2 = new nuint[size1];
+        NativeMethods.vector_vector_KeyPoint_getSize2(Handle, size2);
+        return size2.Select(s => (long)s).ToArray();
+    }
+
+    /// <summary>
+    /// Converts std::vector to managed array
+    /// </summary>
+    /// <returns></returns>
+    public KeyPoint[][] ToArray()
+    {
+        var size1 = GetSize1();
+        if (size1 == 0)
+            return [];
+        var size2 = GetSize2();
+
+        var ret = new KeyPoint[size1][];
+        for (var i = 0; i < size1; i++)
+        {
+            ret[i] = new KeyPoint[size2[i]];
+        }
+
+        using var retPtr = new ArrayAddress2<KeyPoint>(ret);
+        NativeMethods.vector_vector_KeyPoint_copy(Handle, retPtr.GetPointer());
+        return ret;
+    }
+}

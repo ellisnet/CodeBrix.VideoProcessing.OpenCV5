@@ -1,0 +1,34 @@
+{
+  "dependencies": [
+    "tesseract",
+    "zlib",
+    "libpng",
+    {
+      "name": "libjpeg-turbo",
+      "features": ["jpeg7"]
+    },
+    "tiff",
+    "libwebp",
+    {
+      "name": "ffmpeg",
+      "platform": "osx"
+    },
+    {
+      "name": "hdf5",
+      "platform": "osx"
+    },
+    {
+      "name": "freetype",
+      "platform": "osx"
+    },
+    {
+      "name": "harfbuzz",
+      "platform": "osx"
+    },
+    {
+      "name": "eigen3",
+      "platform": "osx"
+    }
+  ],
+  "builtin-baseline": "1e199d32ad53aab1defda61ce41c380302e3f95c"
+}

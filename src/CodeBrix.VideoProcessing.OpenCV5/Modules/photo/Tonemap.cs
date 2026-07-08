@@ -1,0 +1,74 @@
+using System;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+
+namespace CodeBrix.VideoProcessing.OpenCV5; //was previously: OpenCvSharp;
+
+/// <summary>
+/// Base class for tonemapping algorithms - tools that are used to map HDR image to 8-bit range.
+/// </summary>
+public class Tonemap : Algorithm
+{
+    /// <summary>
+    /// Relay constructor for subclasses.
+    /// </summary>
+    protected Tonemap(IntPtr smartPtr, IntPtr rawPtr, Action<IntPtr> release)
+        : base(smartPtr, rawPtr, release)
+    {
+    }
+
+    private Tonemap(IntPtr smartPtr, IntPtr rawPtr)
+        : base(smartPtr, rawPtr, p => NativeMethods.HandleException(NativeMethods.photo_Ptr_Tonemap_delete(p)))
+    {
+    }
+
+    /// <summary>
+    /// Creates simple linear mapper with gamma correction
+    /// </summary>
+    /// <param name="gamma">positive value for gamma correction.
+    /// Gamma value of 1.0 implies no correction, gamma equal to 2.2f is suitable for most displays.
+    /// Generally gamma &gt; 1 brightens the image and gamma &lt; 1 darkens it.</param>
+    /// <returns></returns>
+    public static Tonemap Create(float gamma = 1f)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.photo_createTonemap(gamma, out var smartPtr));
+        NativeMethods.HandleException(NativeMethods.photo_Ptr_Tonemap_get(smartPtr, out var rawPtr));
+        return new Tonemap(smartPtr, rawPtr);
+    }
+
+    /// <summary>
+    /// Tonemaps image
+    /// </summary>
+    /// <param name="src">source image - CV_32FC3 Mat (float 32 bits 3 channels)</param>
+    /// <param name="dst">destination image - CV_32FC3 Mat with values in [0, 1] range</param>
+    public virtual void Process(InputArray src, OutputArray dst)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.photo_Tonemap_process(Handle, src.Proxy, dst.Proxy));
+
+        GC.KeepAlive(src.Source);
+    }
+
+    /// <summary>
+    /// Gets or sets positive value for gamma correction. Gamma value of 1.0 implies no correction, gamma
+    /// equal to 2.2f is suitable for most displays.
+    /// Generally gamma &gt; 1 brightens the image and gamma &lt; 1 darkens it.
+    /// </summary>
+    public float Gamma
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.photo_Tonemap_getGamma(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.photo_Tonemap_setGamma(Handle, value));
+        }
+    }
+
+    }

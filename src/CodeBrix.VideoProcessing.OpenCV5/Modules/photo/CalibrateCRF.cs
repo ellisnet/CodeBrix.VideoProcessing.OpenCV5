@@ -1,0 +1,42 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+
+namespace CodeBrix.VideoProcessing.OpenCV5; //was previously: OpenCvSharp;
+
+/// <summary>
+/// The base class for camera response calibration algorithms.
+/// </summary>
+// ReSharper disable once InconsistentNaming
+public abstract class CalibrateCRF : Algorithm
+{
+    /// <inheritdoc />
+    protected CalibrateCRF(IntPtr smartPtr, IntPtr rawPtr, Action<IntPtr> release)
+        : base(smartPtr, rawPtr, release) { }
+
+    /// <summary>
+    /// Recovers inverse camera response.
+    /// </summary>
+    /// <param name="src">vector of input images</param>
+    /// <param name="dst">256x1 matrix with inverse camera response function</param>
+    /// <param name="times">vector of exposure time values for each image</param>
+    public virtual void Process(IEnumerable<Mat> src, OutputArray dst, IEnumerable<float> times)
+    {
+        if (src is null)
+            throw new ArgumentNullException(nameof(src));
+        if (times is null)
+            throw new ArgumentNullException(nameof(times));
+
+        var srcArray = src.Select(x => x.CvPtr).ToArray();
+        var timesArray = times.ToArray();
+        if (srcArray.Length != timesArray.Length)
+            throw new OpenCvSharpException("src.Count() != times.Count");
+
+        NativeMethods.HandleException(
+            NativeMethods.photo_CalibrateCRF_process(Handle, srcArray, srcArray.Length, dst.Proxy, timesArray));
+
+        GC.KeepAlive(src);
+        GC.KeepAlive(dst.Source);
+    }
+}

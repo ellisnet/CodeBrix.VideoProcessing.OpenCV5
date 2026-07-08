@@ -1,0 +1,75 @@
+using System;
+using CodeBrix.VideoProcessing.OpenCV5.Dnn;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+
+namespace CodeBrix.VideoProcessing.OpenCV5; //was previously: OpenCvSharp;
+
+/// <summary>
+/// DNN-based face detector
+/// </summary>
+public class FaceDetectorYN : Algorithm
+{
+    /// <summary>
+    /// Creates instance by cv::Ptr&lt;cv::FaceDetectorYN&gt;* and cv::FaceDetectorYN*
+    /// </summary>
+    private FaceDetectorYN(IntPtr smartPtr, IntPtr rawPtr)
+        : base(smartPtr, rawPtr, p => NativeMethods.HandleException(
+            NativeMethods.objdetect_Ptr_FaceDetectorYN_delete(p)))
+    { }
+
+    /// <summary>
+    /// Creates an instance of this class with given parameters.
+    /// </summary>
+    /// <param name="model">The path to the requested model</param>
+    /// <param name="config">The path to the config file for compatibility, which is not requested for ONNX models</param>
+    /// <param name="inputSize">The size of the input image</param>
+    /// <param name="scoreThreshold">The threshold to filter out bounding boxes of score smaller than the given value</param>
+    /// <param name="nmsThreshold">The threshold to suppress bounding boxes of IoU bigger than the given value</param>
+    /// <param name="topK">Keep top K bboxes before NMS</param>
+    /// <param name="backendId">The id of backend</param>
+    /// <param name="targetId">The id of target device</param>
+    public static FaceDetectorYN Create(
+        string model,
+        string config,
+        Size inputSize,
+        float scoreThreshold = 0.9f,
+        float nmsThreshold = 0.3f,
+        int topK = 5000,
+        Backend backendId = Backend.DEFAULT,
+        Target targetId = Target.CPU)
+    {
+        using StdString csModel = new(model);
+        using StdString csConfig = new(config);
+
+        NativeMethods.HandleException(
+            NativeMethods.objdetect_FaceDetectorYN_create(
+                csModel.CvPtr,
+                csConfig.CvPtr,
+                ref inputSize,
+                scoreThreshold,
+                nmsThreshold,
+                topK,
+                (int)backendId,
+                (int)targetId,
+                out var smartPtr));
+        NativeMethods.HandleException(
+            NativeMethods.objdetect_Ptr_FaceDetectorYN_get(smartPtr, out var rawPtr));
+        return new FaceDetectorYN(smartPtr, rawPtr);
+    }
+
+    /// <summary>
+    /// A simple interface to detect face from given image.
+    /// </summary>
+    /// <param name="image">An image to detect</param>
+    /// <param name="faces">Detection results stored in a Mat</param>
+    /// <returns>1 if detection is successful, 0 otherwise.</returns>
+    public int Detect(Mat image, Mat faces)
+    {
+        ThrowIfDisposed();
+        InputArray iaImage = image;
+        OutputArray oaFaces = faces;
+        NativeMethods.HandleException(
+            NativeMethods.objdetect_FaceDetectorYN_detect(Handle, iaImage.Proxy, oaFaces.Proxy, out var result));
+        return result;
+    }
+}

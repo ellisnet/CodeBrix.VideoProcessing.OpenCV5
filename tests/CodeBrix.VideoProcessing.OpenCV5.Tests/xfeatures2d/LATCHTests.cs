@@ -1,0 +1,49 @@
+using CodeBrix.VideoProcessing.OpenCV5.XFeatures2D;
+using Xunit;
+
+namespace CodeBrix.VideoProcessing.OpenCV5.Tests.XFeatures2D; //was previously: OpenCvSharp.Tests.XFeatures2D;
+
+// ReSharper disable once InconsistentNaming
+public class LATCHTests : TestBase
+{
+    [Fact]
+    public void CreateAndDispose()
+    {
+        var surf = LATCH.Create();
+        surf.Dispose();
+    }
+
+    [Fact]
+    public void Compute()
+    {
+        using (var color = LoadImage("lenna.png", ImreadModes.Color))
+        using (var gray = LoadImage("lenna.png", ImreadModes.Grayscale))
+        using (var descriptors = new Mat())
+        using (var latch = LATCH.Create())
+        using (var surf = SURF.Create(500))
+        {
+            var keypoints = surf.Detect(gray);
+            latch.Compute(color, ref keypoints, descriptors);
+        }
+    }
+
+    [Fact]
+    public void DescriptorSize()
+    {
+        using (var alg = LATCH.Create())
+        {
+            var sz = alg.DescriptorSize;
+            Assert.Equal(32, sz);
+        }
+    }
+
+    [Fact]
+    public void DefaultNorm()
+    {
+        using (var alg = LATCH.Create())
+        {
+            var defnorm = alg.DefaultNorm;
+            Assert.Equal(6, defnorm);
+        }
+    }
+}

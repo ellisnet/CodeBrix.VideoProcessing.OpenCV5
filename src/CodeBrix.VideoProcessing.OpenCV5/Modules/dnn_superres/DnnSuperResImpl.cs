@@ -1,0 +1,207 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using CodeBrix.VideoProcessing.OpenCV5.Dnn;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+using CodeBrix.VideoProcessing.OpenCV5.Internal.Vectors;
+
+// ReSharper disable UnusedMember.Global
+// ReSharper disable IdentifierTypo
+// ReSharper disable InconsistentNaming
+// ReSharper disable CommentTypo
+
+namespace CodeBrix.VideoProcessing.OpenCV5.DnnSuperres; //was previously: OpenCvSharp.DnnSuperres;
+
+/// <summary>
+///  A class to upscale images via convolutional neural networks.
+/// The following four models are implemented:
+/// - edsr
+/// - espcn
+/// - fsrcnn
+/// - lapsrn
+/// </summary>
+public class DnnSuperResImpl : CvObject
+{
+    /// <inheritdoc />
+    /// <summary>
+    /// Empty constructor
+    /// </summary>
+    public DnnSuperResImpl()
+    {
+        NativeMethods.HandleException(
+            NativeMethods.dnn_superres_DnnSuperResImpl_new1(out var p));
+        InitSafeHandle(p);
+    }
+
+    /// <inheritdoc />
+    /// <summary>
+    /// Constructor which immediately sets the desired model
+    /// </summary>
+    /// <param name="algo">String containing one of the desired models:
+    /// - edsr
+    /// - espcn
+    /// - fsrcnn
+    /// - lapsrn</param>
+    /// <param name="scale">Integer specifying the upscale factor</param>
+    public DnnSuperResImpl(string algo, int scale)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.dnn_superres_DnnSuperResImpl_new2(algo, scale, out var p));
+        InitSafeHandle(p);
+    }
+
+    /// <inheritdoc />
+    /// <summary>
+    /// </summary>
+    protected DnnSuperResImpl(IntPtr ptr)
+    {
+        InitSafeHandle(ptr);
+    }
+        
+    /// <inheritdoc />
+    /// <summary>
+    /// </summary>
+
+    private void InitSafeHandle(IntPtr p, bool ownsHandle = true)
+    {
+        SetSafeHandle(new OpenCvPtrSafeHandle(p, ownsHandle,
+            static h => NativeMethods.HandleException(NativeMethods.dnn_superres_DnnSuperResImpl_delete(h))));
+    }
+        
+    /// <summary>
+    /// Read the model from the given path
+    /// </summary>
+    /// <param name="path">Path to the model file.</param>
+    /// <returns></returns>
+    public void ReadModel(string path)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.dnn_superres_DnnSuperResImpl_readModel1(Handle, path));
+    }
+
+    /// <summary>
+    /// Read the model from the given path
+    /// </summary>
+    /// <param name="weights">Path to the model weights file.</param>
+    /// <param name="definition">Path to the model definition file.</param>
+    /// <returns></returns>
+    public void ReadModel(string weights, string definition)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.dnn_superres_DnnSuperResImpl_readModel2(Handle, weights, definition));
+    }
+
+    /// <summary>
+    /// Set desired model
+    /// </summary>
+    /// <param name="algo">String containing one of the desired models:
+    /// - edsr
+    /// - espcn
+    /// - fsrcnn
+    /// - lapsrn</param>
+    /// <param name="scale">Integer specifying the upscale factor</param>
+    /// <returns></returns>
+    public void SetModel(string algo, int scale)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.dnn_superres_DnnSuperResImpl_setModel(Handle, algo, scale));
+    }
+
+    /// <summary>
+    /// Ask network to use specific computation backend where it supported.
+    /// </summary>
+    /// <param name="backendId">backend identifier.</param>
+    public void SetPreferableBackend(Backend backendId)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.dnn_superres_DnnSuperResImpl_setPreferableBackend(Handle, (int)backendId));
+    }
+
+    /// <summary>
+    /// Ask network to make computations on specific target device.
+    /// </summary>
+    /// <param name="targetId">target identifier.</param>
+    public void SetPreferableTarget(Target targetId)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.dnn_superres_DnnSuperResImpl_setPreferableTarget(Handle, (int)targetId));
+    }
+
+    /// <summary>
+    /// Upsample via neural network
+    /// </summary>
+    /// <param name="img">Image to upscale</param>
+    /// <param name="result">Destination upscaled image</param>
+    public void Upsample(InputArray img, OutputArray result)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.dnn_superres_DnnSuperResImpl_upsample(Handle, img.Proxy, result.Proxy));
+
+        GC.KeepAlive(img.Source);
+    }
+        
+    /// <summary>
+    /// Upsample via neural network of multiple outputs
+    /// </summary>
+    /// <param name="img">Image to upscale</param>
+    /// <param name="imgsNew">Destination upscaled images</param>
+    /// <param name="scaleFactors">Scaling factors of the output nodes</param>
+    /// <param name="nodeNames">Names of the output nodes in the neural network</param>
+    [SuppressMessage("Maintainability", "CA1508: Avoid dead conditional code")]
+    public void UpsampleMultioutput(
+        InputArray img, out Mat[] imgsNew, IEnumerable<int> scaleFactors, IEnumerable<string> nodeNames)
+    {
+        ThrowIfDisposed();
+        if (scaleFactors is null) 
+            throw new ArgumentNullException(nameof(scaleFactors));
+        if (nodeNames is null)
+            throw new ArgumentNullException(nameof(nodeNames));
+
+        using var imgsNewVec = new VectorOfMat();
+        var scaleFactorsArray = scaleFactors as int[] ?? scaleFactors.ToArray();
+        var nodeNamesArray = nodeNames as string[] ?? nodeNames.ToArray();
+        NativeMethods.HandleException(
+            NativeMethods.dnn_superres_DnnSuperResImpl_upsampleMultioutput(
+                Handle, img.Proxy, imgsNewVec.CvPtr,
+                scaleFactorsArray, scaleFactorsArray.Length, 
+                nodeNamesArray, nodeNamesArray.Length));
+
+        imgsNew = imgsNewVec.ToArray();
+    }
+        
+    /// <summary>
+    /// Returns the scale factor of the model
+    /// </summary>
+    /// <returns>Current scale factor.</returns>
+    public int GetScale()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.dnn_superres_DnnSuperResImpl_getScale(
+                Handle, out int ret));
+        return ret;
+    }
+        
+    /// <summary>
+    /// Returns the scale factor of the model
+    /// </summary>
+    /// <returns>Current algorithm.</returns>
+    public string GetAlgorithm()
+    {
+        ThrowIfDisposed();
+
+        using var result = new StdString();
+        NativeMethods.HandleException(
+            NativeMethods.dnn_superres_DnnSuperResImpl_getAlgorithm(
+                Handle, result.CvPtr));
+        return result.ToString();
+    }
+}

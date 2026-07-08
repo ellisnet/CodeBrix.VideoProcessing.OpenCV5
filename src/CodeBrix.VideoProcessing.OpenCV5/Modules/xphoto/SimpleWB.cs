@@ -1,0 +1,145 @@
+using System;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+
+// ReSharper disable InconsistentNaming
+
+namespace CodeBrix.VideoProcessing.OpenCV5.XPhoto; //was previously: OpenCvSharp.XPhoto;
+
+/// <summary>
+/// A simple white balance algorithm that works by independently stretching each of the input image channels to the specified range. For increased robustness it ignores the top and bottom p% of pixel values.
+/// </summary>
+public class SimpleWB : WhiteBalancer
+{
+    /// <summary>
+    /// Constructor
+    /// </summary>
+    private SimpleWB(IntPtr smartPtr, IntPtr rawPtr)
+        : base(smartPtr, rawPtr, p => NativeMethods.HandleException(NativeMethods.xphoto_Ptr_SimpleWB_delete(p)))
+    { }
+    /// <summary>
+    /// Creates an instance of SimpleWB
+    /// </summary>
+    /// <returns></returns>
+    public static SimpleWB Create()
+    {
+        NativeMethods.HandleException(
+            NativeMethods.xphoto_createSimpleWB(out var smartPtr));
+        NativeMethods.HandleException(NativeMethods.xphoto_Ptr_SimpleWB_get(smartPtr, out var rawPtr));
+        return new SimpleWB(smartPtr, rawPtr);
+    }
+
+    /// <summary>
+    /// Input image range maximum value.
+    /// </summary>
+    public float InputMax
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.xphoto_SimpleWB_InputMax_get(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.xphoto_SimpleWB_InputMax_set(Handle, value));
+        }
+    }
+
+    /// <summary>
+    /// Input image range minimum value.
+    /// </summary>
+    public float InputMin
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.xphoto_SimpleWB_InputMin_get(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.xphoto_SimpleWB_InputMin_set(Handle, value));
+        }
+    }
+
+    /// <summary>
+    /// Output image range maximum value.
+    /// </summary>
+    public float OutputMax
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.xphoto_SimpleWB_OutputMax_get(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.xphoto_SimpleWB_OutputMax_set(Handle, value));
+        }
+    }
+
+    /// <summary>
+    /// Output image range minimum value.
+    /// </summary>
+    public float OutputMin
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.xphoto_SimpleWB_OutputMin_get(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.xphoto_SimpleWB_OutputMin_set(Handle, value));
+        }
+    }
+
+    /// <summary>
+    /// Percent of top/bottom values to ignore.
+    /// </summary>
+    public float P
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.xphoto_SimpleWB_P_get(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.xphoto_SimpleWB_P_set(Handle, value));
+        }
+    }
+
+    /// <summary>
+    /// Applies white balancing to the input image.
+    /// </summary>
+    /// <param name="src">Input image</param>
+    /// <param name="dst">White balancing result</param>
+    public override void BalanceWhite(InputArray src, OutputArray dst)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.xphoto_SimpleWB_balanceWhite(Handle, src.Proxy, dst.Proxy));
+
+        GC.KeepAlive(src.Source);
+        GC.KeepAlive(dst.Source);
+    }
+
+    }

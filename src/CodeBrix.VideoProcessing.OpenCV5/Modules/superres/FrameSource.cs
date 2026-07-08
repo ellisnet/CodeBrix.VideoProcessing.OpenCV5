@@ -1,0 +1,115 @@
+using System;
+using System.IO;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+
+namespace CodeBrix.VideoProcessing.OpenCV5; //was previously: OpenCvSharp;
+
+/// <summary>
+/// 
+/// </summary>
+public class FrameSource : CvPtrObject
+{
+    #region Init & Disposal
+
+    private FrameSource(IntPtr smartPtr, IntPtr rawPtr)
+        : base(smartPtr, rawPtr,
+            p => NativeMethods.HandleException(NativeMethods.superres_Ptr_FrameSource_delete(p)))
+    { }
+
+    private static FrameSource FromPtr(IntPtr smartPtr)
+    {
+        if (smartPtr == IntPtr.Zero)
+            throw new OpenCvSharpException("Invalid FrameSource pointer");
+        NativeMethods.HandleException(
+            NativeMethods.superres_Ptr_FrameSource_get(smartPtr, out var rawPtr));
+        return new FrameSource(smartPtr, rawPtr);
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <returns></returns>
+    public static FrameSource CreateFrameSource_Empty()
+    {
+        NativeMethods.HandleException(
+            NativeMethods.superres_createFrameSource_Empty(out var ptr));
+        return FromPtr(ptr);
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="fileName"></param>
+    /// <returns></returns>
+    public static FrameSource CreateFrameSource_Video(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName))
+            throw new ArgumentNullException(nameof(fileName));
+        if (!File.Exists(fileName))
+            throw new FileNotFoundException("", fileName);
+
+        NativeMethods.HandleException(
+            NativeMethods.superres_createFrameSource_Video(fileName, out var ptr));
+        return FromPtr(ptr);
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="fileName"></param>
+    /// <returns></returns>
+    public static FrameSource CreateFrameSource_Video_CUDA(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName))
+            throw new ArgumentNullException(nameof(fileName));
+        if (!File.Exists(fileName))
+            throw new FileNotFoundException("", fileName);
+
+        NativeMethods.HandleException(
+            NativeMethods.superres_createFrameSource_Video_CUDA(fileName, out var ptr));
+        return FromPtr(ptr);
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="deviceId"></param>
+    /// <returns></returns>
+    public static FrameSource CreateFrameSource_Camera(int deviceId)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.superres_createFrameSource_Camera(deviceId, out var ptr));
+        return FromPtr(ptr);
+    }
+
+    #endregion
+
+    #region Methods
+        
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="frame"></param>
+    public virtual void NextFrame(OutputArray frame)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.superres_FrameSource_nextFrame(Handle, frame.Proxy));
+
+        GC.KeepAlive(frame.Source);
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    public virtual void Reset()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.superres_FrameSource_reset(Handle));
+    }
+
+    #endregion
+
+    }

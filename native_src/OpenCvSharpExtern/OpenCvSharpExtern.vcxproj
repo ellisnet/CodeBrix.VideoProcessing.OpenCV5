@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{8E7279F8-F801-4672-B42F-1ED2C68B16A4}</ProjectGuid>
+    <Keyword>MakeFileProj</Keyword>
+    <RootNamespace>OpenCvSharpExtern</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <NMakeBuildCommandLine>cmake --build "$(SolutionDir)src\build" --config Debug</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>cmake --build "$(SolutionDir)src\build" --config Debug --clean-first</NMakeReBuildCommandLine>
+    <NMakeCleanCommandLine>cmake --build "$(SolutionDir)src\build" --config Debug --target clean</NMakeCleanCommandLine>
+    <NMakeOutput>$(SolutionDir)src\build\OpenCvSharpExtern\Debug\OpenCvSharpExtern.dll</NMakeOutput>
+    <NMakeIncludeSearchPath>$(SolutionDir)opencv_artifacts\include;$(SolutionDir)vcpkg_installed\x64-windows-static\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakePreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;%(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <NMakeBuildCommandLine>cmake --build "$(SolutionDir)src\build" --config Release</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>cmake --build "$(SolutionDir)src\build" --config Release --clean-first</NMakeReBuildCommandLine>
+    <NMakeCleanCommandLine>cmake --build "$(SolutionDir)src\build" --config Release --target clean</NMakeCleanCommandLine>
+    <NMakeOutput>$(SolutionDir)src\build\OpenCvSharpExtern\Release\OpenCvSharpExtern.dll</NMakeOutput>
+    <NMakeIncludeSearchPath>$(SolutionDir)opencv_artifacts\include;$(SolutionDir)vcpkg_installed\x64-windows-static\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakePreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;CVAPI_EXPORTS;%(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Include="aruco.cpp" />
+    <ClCompile Include="barcode.cpp" />
+    <ClCompile Include="bgsegm.cpp" />
+    <ClCompile Include="calib3d.cpp" />
+    <ClCompile Include="core.cpp" />
+    <ClCompile Include="cuda.cpp" />
+    <ClCompile Include="dnn.cpp" />
+    <ClCompile Include="dnn_superres.cpp" />
+    <ClCompile Include="face.cpp" />
+    <ClCompile Include="features2d.cpp" />
+    <ClCompile Include="flann.cpp" />
+    <ClCompile Include="highgui.cpp" />
+    <ClCompile Include="img_hash.cpp" />
+    <ClCompile Include="imgcodecs.cpp" />
+    <ClCompile Include="imgproc.cpp" />
+    <ClCompile Include="line_descriptor.cpp" />
+    <ClCompile Include="ml.cpp" />
+    <ClCompile Include="objdetect.cpp" />
+    <ClCompile Include="optflow.cpp" />
+    <ClCompile Include="photo.cpp" />
+    <ClCompile Include="quality.cpp" />
+    <ClCompile Include="shape.cpp" />
+    <ClCompile Include="std_string.cpp" />
+    <ClCompile Include="std_vector.cpp" />
+    <ClCompile Include="stitching.cpp" />
+    <ClCompile Include="superres.cpp" />
+    <ClCompile Include="text.cpp" />
+    <ClCompile Include="tracking.cpp" />
+    <ClCompile Include="video.cpp" />
+    <ClCompile Include="videoio.cpp" />
+    <ClCompile Include="wechat_qrcode.cpp" />
+    <ClCompile Include="xfeatures2d.cpp" />
+    <ClCompile Include="ximgproc.cpp" />
+    <ClCompile Include="xphoto.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="aruco.h" />
+    <ClInclude Include="barcode.h" />
+    <ClInclude Include="bgsegm.h" />
+    <ClInclude Include="calib3d.h" />
+    <ClInclude Include="calib3d_fisheye.h" />
+    <ClInclude Include="calib3d_StereoMatcher.h" />
+    <ClInclude Include="core.h" />
+    <ClInclude Include="core_Algorithm.h" />
+    <ClInclude Include="core_FileNode.h" />
+    <ClInclude Include="core_FileStorage.h" />
+    <ClInclude Include="core_InputArray.h" />
+    <ClInclude Include="core_LDA.h" />
+    <ClInclude Include="core_Mat.h" />
+    <ClInclude Include="core_MatExpr.h" />
+    <ClInclude Include="core_OutputArray.h" />
+    <ClInclude Include="core_PCA.h" />
+    <ClInclude Include="core_SparseMat.h" />
+    <ClInclude Include="core_SVD.h" />
+    <ClInclude Include="core_UMat.h" />
+    <ClInclude Include="cuda.h" />
+    <ClInclude Include="cuda_GpuMat.h" />
+    <ClInclude Include="dnn.h" />
+    <ClInclude Include="dnn_Model.h" />
+    <ClInclude Include="dnn_TextModel.h" />
+    <ClInclude Include="dnn_Net.h" />
+    <ClInclude Include="dnn_superres.h" />
+    <ClInclude Include="face_Facemark.h" />
+    <ClInclude Include="face_FaceRecognizer.h" />
+    <ClInclude Include="features2d.h" />
+    <ClInclude Include="features2d_BOW.h" />
+    <ClInclude Include="features2d_DescriptorMatcher.h" />
+    <ClInclude Include="features2d_Feature2D.h" />
+    <ClInclude Include="flann.h" />
+    <ClInclude Include="flann_IndexParams.h" />
+    <ClInclude Include="highgui.h" />
+    <ClInclude Include="img_hash.h" />
+    <ClInclude Include="imgcodecs.h" />
+    <ClInclude Include="imgproc.h" />
+    <ClInclude Include="imgproc_CLAHE.h" />
+    <ClInclude Include="imgproc_GeneralizedHough.h" />
+    <ClInclude Include="imgproc_LineIterator.h" />
+    <ClInclude Include="imgproc_LineSegmentDetector.h" />
+    <ClInclude Include="imgproc_Segmentation.h" />
+    <ClInclude Include="imgproc_Subdiv2D.h" />
+    <ClInclude Include="include_opencv.h" />
+    <ClInclude Include="line_descriptor.h" />
+    <ClInclude Include="ml.h" />
+    <ClInclude Include="ml_ANN_MLP.h" />
+    <ClInclude Include="ml_Boost.h" />
+    <ClInclude Include="ml_DTrees.h" />
+    <ClInclude Include="ml_EM.h" />
+    <ClInclude Include="ml_KNearest.h" />
+    <ClInclude Include="ml_LogisticRegression.h" />
+    <ClInclude Include="ml_NormalBayesClassifier.h" />
+    <ClInclude Include="ml_RTrees.h" />
+    <ClInclude Include="ml_StatModel.h" />
+    <ClInclude Include="ml_SVM.h" />
+    <ClInclude Include="my_functions.h" />
+    <ClInclude Include="my_types.h" />
+    <ClInclude Include="objdetect.h" />
+    <ClInclude Include="objdetect_FaceDetectorYN.h" />
+    <ClInclude Include="objdetect_HOGDescriptor.h" />
+    <ClInclude Include="objdetect_QRCodeDetector.h" />
+    <ClInclude Include="optflow.h" />
+    <ClInclude Include="optflow_motempl.h" />
+    <ClInclude Include="photo.h" />
+    <ClInclude Include="photo_HDR.h" />
+    <ClInclude Include="photo_Tonemap.h" />
+    <ClInclude Include="quality.h" />
+    <ClInclude Include="shape.h" />
+    <ClInclude Include="shape_ShapeDistanceExtractor.h" />
+    <ClInclude Include="std_string.h" />
+    <ClInclude Include="std_vector.h" />
+    <ClInclude Include="std_vector_nesting.h" />
+    <ClInclude Include="stitching.h" />
+    <ClInclude Include="stitching_detail_Matchers.h" />
+    <ClInclude Include="superres.h" />
+    <ClInclude Include="text.h" />
+    <ClInclude Include="text_TextDetector.h" />
+    <ClInclude Include="tracking.h" />
+    <ClInclude Include="tracking_UnscentedKalmanFilter.h" />
+    <ClInclude Include="video.h" />
+    <ClInclude Include="video_background_segm.h" />
+    <ClInclude Include="video_tracking.h" />
+    <ClInclude Include="videoio.h" />
+    <ClInclude Include="wechat_qrcode.h" />
+    <ClInclude Include="xfeatures2d.h" />
+    <ClInclude Include="ximgproc.h" />
+    <ClInclude Include="ximgproc_EdgeBoxes.h" />
+    <ClInclude Include="ximgproc_EdgeFilter.h" />
+    <ClInclude Include="ximgproc_FastLineDetector.h" />
+    <ClInclude Include="ximgproc_RidgeDetectionFilter.h" />
+    <ClInclude Include="ximgproc_Segmentation.h" />
+    <ClInclude Include="ximgproc_StructuredEdgeDetection.h" />
+    <ClInclude Include="ximgproc_SuperPixel.h" />
+    <ClInclude Include="xphoto.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".clang-format" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>

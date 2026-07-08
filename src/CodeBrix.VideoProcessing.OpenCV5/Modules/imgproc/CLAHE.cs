@@ -1,0 +1,107 @@
+using System;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+
+// ReSharper disable InconsistentNaming
+// ReSharper disable IdentifierTypo
+// ReSharper disable CommentTypo
+
+namespace CodeBrix.VideoProcessing.OpenCV5; //was previously: OpenCvSharp;
+
+/// <summary>
+/// Contrast Limited Adaptive Histogram Equalization
+/// </summary>
+public sealed class CLAHE : Algorithm
+{
+    /// <summary>
+    /// cv::Ptr&lt;CLAHE&gt;
+    /// </summary>
+    /// <summary>
+    /// 
+    /// </summary>
+    private CLAHE(IntPtr smartPtr, IntPtr rawPtr)
+        : base(smartPtr, rawPtr, p => NativeMethods.HandleException(NativeMethods.imgproc_Ptr_CLAHE_delete(p)))
+    { }
+
+    /// <summary>
+    /// Creates a predefined CLAHE object
+    /// </summary>
+    /// <param name="clipLimit"></param>
+    /// <param name="tileGridSize"></param>
+    /// <returns></returns>
+    public static CLAHE Create(double clipLimit = 40.0, Size? tileGridSize = null)
+    {
+        var tileGridSizeValue = tileGridSize.GetValueOrDefault(new Size(8, 8));
+        NativeMethods.HandleException(
+            NativeMethods.imgproc_createCLAHE(
+                clipLimit, tileGridSizeValue, out var smartPtr));
+        NativeMethods.HandleException(NativeMethods.imgproc_Ptr_CLAHE_get(smartPtr, out var rawPtr));
+        return new CLAHE(smartPtr, rawPtr);
+    }
+
+    /// <summary>
+    /// Equalizes the histogram of a grayscale image using Contrast Limited Adaptive Histogram Equalization.
+    /// </summary>
+    /// <param name="src">Source image of type CV_8UC1 or CV_16UC1.</param>
+    /// <param name="dst">Destination image.</param>
+    public void Apply(InputArray src, OutputArray dst)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.imgproc_CLAHE_apply(Handle, src.Proxy, dst.Proxy));
+
+        // Handle (a SafeHandle) keeps this alive across the call, so no GC.KeepAlive(this) is needed.
+        GC.KeepAlive(src.Source);
+        GC.KeepAlive(dst.Source);
+    }
+
+    /// <summary>
+    /// Gets or sets threshold for contrast limiting.
+    /// </summary>
+    public double ClipLimit
+    {
+        get
+        { 
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.imgproc_CLAHE_getClipLimit(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.imgproc_CLAHE_setClipLimit(Handle, value));
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets size of grid for histogram equalization. Input image will be divided into equally sized rectangular tiles.
+    /// </summary>
+    public Size TilesGridSize
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.imgproc_CLAHE_getTilesGridSize(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.imgproc_CLAHE_setTilesGridSize(Handle, value));
+        }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    public void CollectGarbage()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.imgproc_CLAHE_collectGarbage(Handle));
+    }
+}

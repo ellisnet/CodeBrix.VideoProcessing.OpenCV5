@@ -1,0 +1,95 @@
+using CodeBrix.VideoProcessing.OpenCV5.XFeatures2D;
+using Xunit;
+
+namespace CodeBrix.VideoProcessing.OpenCV5.Tests.XFeatures2D; //was previously: OpenCvSharp.Tests.XFeatures2D;
+
+// ReSharper disable once InconsistentNaming
+public class SURFTests : TestBase
+{
+    private readonly ITestOutputHelper testOutputHelper;
+
+    public SURFTests(ITestOutputHelper testOutputHelper)
+    {
+        this.testOutputHelper = testOutputHelper;
+    }
+
+    [Fact]
+    public void CreateAndDispose()
+    {
+        var surf = SURF.Create(400);
+        surf.Dispose();
+    }
+
+    [Fact]
+    public void Detect()
+    {
+        // This parameter should introduce same result of http://opencv.jp/wordpress/wp-content/uploads/lenna_SURF-150x150.png
+        using var gray = LoadImage("lenna.png", 0);
+        using var surf = SURF.Create(500, 4, 2, true);
+        var keyPoints = surf.Detect(gray);
+
+        testOutputHelper.WriteLine($"KeyPoint has {keyPoints.Length} items.");
+    }
+
+    [Fact]
+    public void DetectAndCompute()
+    {
+        using (var gray = LoadImage("lenna.png", ImreadModes.Grayscale))
+        using (var surf = SURF.Create(500))
+        using (Mat descriptor = new Mat())
+        {
+            surf.DetectAndCompute(gray, default, out var keyPoints, descriptor);
+
+            testOutputHelper.WriteLine($"keyPoints has {keyPoints.Length} items.");
+            testOutputHelper.WriteLine($"descriptor has {descriptor.Rows} items.");
+        }
+    }
+
+    [Fact]
+    public void DescriptorSize()
+    {
+        using (var alg = SURF.Create(300))
+        {
+            var ext = alg.Extended;
+            var sz = alg.DescriptorSize;
+            Assert.Equal(ext ? 128 : 64, sz);
+            alg.Extended = !ext;
+
+            var ext2 = alg.Extended;
+            Assert.NotEqual(ext, ext2);
+
+            var sz2 = alg.DescriptorSize;
+            Assert.Equal(ext2 ? 128 : 64, sz2);
+        }
+    }
+
+    [Fact]
+    public void DescriptorType()
+    {
+        using (var alg = CodeBrix.VideoProcessing.OpenCV5.XFeatures2D.SURF.Create(300))
+        {
+            var dtype = alg.DescriptorType;
+            Assert.Equal(MatType.CV_32F, dtype);
+        }
+    }
+
+    [Fact]
+    public void DefaultNorm()
+    {
+        using (var alg = CodeBrix.VideoProcessing.OpenCV5.XFeatures2D.SURF.Create(300))
+        {
+            var defnorm = alg.DefaultNorm;
+            Assert.Equal(4, defnorm);
+        }
+    }
+
+    [Fact]
+    public void Empty()
+    {
+        using (var alg = CodeBrix.VideoProcessing.OpenCV5.XFeatures2D.SURF.Create(300))
+        {
+            var empty = alg.Empty();
+            Assert.True(empty);
+        }
+    }
+}

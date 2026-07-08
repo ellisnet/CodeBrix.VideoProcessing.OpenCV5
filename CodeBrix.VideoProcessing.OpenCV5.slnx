@@ -1,0 +1,21 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="AGENT-README.txt" />
+    <File Path="icon-codebrix-128.png" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+    <File Path="THIRD-PARTY-NOTICES.txt" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="tests/CodeBrix.VideoProcessing.OpenCV5.Tests/CodeBrix.VideoProcessing.OpenCV5.Tests.csproj" />
+    <Project Path="tests/CodeBrix.VideoProcessing.OpenCV5.Analyzers.Tests/CodeBrix.VideoProcessing.OpenCV5.Analyzers.Tests.csproj" />
+    <Project Path="tests/CodeBrix.VideoProcessing.OpenCV5.Wpf.Tests/CodeBrix.VideoProcessing.OpenCV5.Wpf.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Build/">
+    <Project Path="build/CodeBrix.VideoProcessing.OpenCV5.Build.csproj" />
+    <Project Path="build/nuget-pack-shim/CodeBrix.Pack.Shim.csproj" />
+  </Folder>
+  <Project Path="src/CodeBrix.VideoProcessing.OpenCV5/CodeBrix.VideoProcessing.OpenCV5.csproj" />
+  <Project Path="src/CodeBrix.VideoProcessing.OpenCV5.Analyzers/CodeBrix.VideoProcessing.OpenCV5.Analyzers.csproj" />
+  <Project Path="src/CodeBrix.VideoProcessing.OpenCV5.Wpf/CodeBrix.VideoProcessing.OpenCV5.Wpf.csproj" />
+</Solution>

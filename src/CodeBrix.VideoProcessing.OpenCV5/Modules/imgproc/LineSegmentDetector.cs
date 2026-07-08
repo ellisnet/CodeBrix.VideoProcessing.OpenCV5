@@ -1,0 +1,129 @@
+using System;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+using CodeBrix.VideoProcessing.OpenCV5.Internal.Vectors;
+
+namespace CodeBrix.VideoProcessing.OpenCV5; //was previously: OpenCvSharp;
+
+/// <summary>
+/// Line segment detector class
+/// </summary>
+public class LineSegmentDetector : Algorithm
+{
+    /// <summary>
+    /// 
+    /// </summary>
+    private LineSegmentDetector(IntPtr smartPtr, IntPtr rawPtr)
+        : base(smartPtr, rawPtr, p => NativeMethods.HandleException(NativeMethods.imgproc_Ptr_LineSegmentDetector_delete(p)))
+    { }
+    /// <summary>
+    /// Creates a smart pointer to a LineSegmentDetector object and initializes it.
+    /// </summary>
+    /// <param name="refine">The way found lines will be refined, see cv::LineSegmentDetectorModes</param>
+    /// <param name="scale">The scale of the image that will be used to find the lines. Range (0..1].</param>
+    /// <param name="sigmaScale">Sigma for Gaussian filter. It is computed as sigma = _sigma_scale/_scale.</param>
+    /// <param name="quant">Bound to the quantization error on the gradient norm.</param>
+    /// <param name="angTh">Gradient angle tolerance in degrees.</param>
+    /// <param name="logEps">Detection threshold: -log10(NFA) \> log_eps. 
+    /// Used only when advancent refinement is chosen.</param>
+    /// <param name="densityTh">Minimal density of aligned region points in the enclosing rectangle.</param>
+    /// <param name="nBins">Number of bins in pseudo-ordering of gradient modulus.</param>
+    /// <returns></returns>
+    public static LineSegmentDetector Create(
+        LineSegmentDetectorModes refine = LineSegmentDetectorModes.RefineNone,
+        double scale = 0.8, double sigmaScale = 0.6, double quant = 2.0, double angTh = 22.5,
+        double logEps = 0, double densityTh = 0.7, int nBins = 1024)
+    {
+        var smartPtr = NativeMethods.imgproc_createLineSegmentDetector(
+            (int)refine, scale, sigmaScale, quant, angTh, logEps, densityTh, nBins);
+        NativeMethods.HandleException(NativeMethods.imgproc_Ptr_LineSegmentDetector_get(smartPtr, out var rawPtr));
+        return new LineSegmentDetector(smartPtr, rawPtr);
+    }
+
+    /// <summary>
+    /// Finds lines in the input image.
+    /// This is the output of the default parameters of the algorithm on the above shown image.
+    /// </summary>
+    /// <param name="image">A grayscale (CV_8UC1) input image. </param>
+    /// <param name="lines">A vector of Vec4i or Vec4f elements specifying the beginning and ending point of a line. 
+    /// Where Vec4i/Vec4f is (x1, y1, x2, y2), point 1 is the start, point 2 - end. Returned lines are strictly oriented depending on the gradient.</param>
+    /// <param name="width">Vector of widths of the regions, where the lines are found. E.g. Width of line.</param>
+    /// <param name="prec">Vector of precisions with which the lines are found.</param>
+    /// <param name="nfa">Vector containing number of false alarms in the line region, 
+    /// with precision of 10%. The bigger the value, logarithmically better the detection.</param>
+    public virtual void Detect(InputArray image, OutputArray lines,
+        OutputArray width = default, OutputArray prec = default, OutputArray nfa = default)
+    {
+        NativeMethods.imgproc_LineSegmentDetector_detect_OutputArray(Handle, image.Proxy, lines.Proxy,
+            width.Proxy, prec.Proxy, nfa.Proxy);
+        GC.KeepAlive(image.Source);
+        GC.KeepAlive(lines.Source);
+        GC.KeepAlive(width.Source);
+        GC.KeepAlive(prec.Source);
+        GC.KeepAlive(nfa.Source);
+    }
+
+    /// <summary>
+    /// Finds lines in the input image.
+    /// This is the output of the default parameters of the algorithm on the above shown image.
+    /// </summary>
+    /// <param name="image">A grayscale (CV_8UC1) input image. </param>
+    /// <param name="lines">A vector of Vec4i or Vec4f elements specifying the beginning and ending point of a line. 
+    /// Where Vec4i/Vec4f is (x1, y1, x2, y2), point 1 is the start, point 2 - end. Returned lines are strictly oriented depending on the gradient.</param>
+    /// <param name="width">Vector of widths of the regions, where the lines are found. E.g. Width of line.</param>
+    /// <param name="prec">Vector of precisions with which the lines are found.</param>
+    /// <param name="nfa">Vector containing number of false alarms in the line region, 
+    /// with precision of 10%. The bigger the value, logarithmically better the detection.</param>
+    public virtual void Detect(InputArray image, out Vec4f[] lines,
+        out double[] width, out double[] prec, out double[] nfa)
+    {
+        using (var linesVec = new StdVector<Vec4f>())
+        using (var widthVec = new StdVector<double>())
+        using (var precVec = new StdVector<double>())
+        using (var nfaVec = new StdVector<double>())
+        {
+            NativeMethods.imgproc_LineSegmentDetector_detect_vector(Handle, image.Proxy,
+                linesVec.CvPtr, widthVec.CvPtr, precVec.CvPtr, nfaVec.CvPtr);
+
+            lines = linesVec.ToArray();
+            width = widthVec.ToArray();
+            prec = precVec.ToArray();
+            nfa = nfaVec.ToArray();
+        }
+        GC.KeepAlive(image.Source);
+    }
+
+    /// <summary>
+    /// Draws the line segments on a given image.
+    /// </summary>
+    /// <param name="image">The image, where the liens will be drawn. 
+    /// Should be bigger or equal to the image, where the lines were found.</param>
+    /// <param name="lines">A vector of the lines that needed to be drawn.</param>
+    public virtual void DrawSegments(InputOutputArray image, InputArray lines)
+    {
+        NativeMethods.imgproc_LineSegmentDetector_drawSegments(Handle, image.Proxy, lines.Proxy);
+        GC.KeepAlive(image.Source);
+        GC.KeepAlive(lines.Source);
+    }
+
+    /// <summary>
+    /// Draws two groups of lines in blue and red, counting the non overlapping (mismatching) pixels.
+    /// </summary>
+    /// <param name="size">The size of the image, where lines1 and lines2 were found.</param>
+    /// <param name="lines1">The first group of lines that needs to be drawn. It is visualized in blue color.</param>
+    /// <param name="lines2">The second group of lines. They visualized in red color.</param>
+    /// <param name="image">Optional image, where the lines will be drawn. 
+    /// The image should be color(3-channel) in order for lines1 and lines2 to be drawn 
+    /// in the above mentioned colors.</param>
+    /// <returns></returns>
+    public virtual int CompareSegments(
+        Size size, InputArray lines1, InputArray lines2, InputOutputArray image = default)
+    {
+        var ret = NativeMethods.imgproc_LineSegmentDetector_compareSegments(
+            Handle, size, lines1.Proxy, lines2.Proxy, image.Proxy);
+        GC.KeepAlive(lines1.Source);
+        GC.KeepAlive(lines2.Source);
+        GC.KeepAlive(image.Source);
+
+        return ret;
+    }
+    }

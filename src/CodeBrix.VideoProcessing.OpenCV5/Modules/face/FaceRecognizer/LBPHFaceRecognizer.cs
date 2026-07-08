@@ -1,0 +1,190 @@
+using System;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+using CodeBrix.VideoProcessing.OpenCV5.Internal.Vectors;
+
+namespace CodeBrix.VideoProcessing.OpenCV5.Face; //was previously: OpenCvSharp.Face;
+
+/// <inheritdoc />
+/// <summary>
+/// The Circular Local Binary Patterns (used in training and prediction) expect the data given as
+/// grayscale images, use cvtColor to convert between the color spaces.
+/// This model supports updating.
+/// </summary>
+// ReSharper disable once InconsistentNaming
+public class LBPHFaceRecognizer : FaceRecognizer
+{
+    /// <summary>
+    ///
+    /// </summary>
+    private LBPHFaceRecognizer(IntPtr smartPtr, IntPtr rawPtr)
+        : base(smartPtr, rawPtr, p => NativeMethods.HandleException(NativeMethods.face_Ptr_LBPHFaceRecognizer_delete(p)))
+    { }
+
+    /// <summary>
+    /// The Circular Local Binary Patterns (used in training and prediction) expect the data given as
+    /// grayscale images, use cvtColor to convert between the color spaces.
+    /// This model supports updating.
+    /// </summary>
+    /// <param name="radius">The radius used for building the Circular Local Binary Pattern. The greater the radius, the</param>
+    /// <param name="neighbors">The number of sample points to build a Circular Local Binary Pattern from. 
+    /// An appropriate value is to use `8` sample points.Keep in mind: the more sample points you include, the higher the computational cost.</param>
+    /// <param name="gridX">The number of cells in the horizontal direction, 8 is a common value used in publications. 
+    /// The more cells, the finer the grid, the higher the dimensionality of the resulting feature vector.</param>
+    /// <param name="gridY">The number of cells in the vertical direction, 8 is a common value used in publications. 
+    /// The more cells, the finer the grid, the higher the dimensionality of the resulting feature vector.</param>
+    /// <param name="threshold">The threshold applied in the prediction. If the distance to the nearest neighbor 
+    /// is larger than the threshold, this method returns -1.</param>
+    /// <returns></returns>
+    // ReSharper disable once InconsistentNaming
+    public static LBPHFaceRecognizer Create(int radius = 1, int neighbors = 8,
+        int gridX = 8, int gridY = 8, double threshold = double.MaxValue)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.face_LBPHFaceRecognizer_create(radius, neighbors, gridX, gridY, threshold, out var smartPtr));
+        if (smartPtr == IntPtr.Zero)
+            throw new OpenCvSharpException($"Invalid cv::Ptr<{nameof(LBPHFaceRecognizer)}> pointer");
+        NativeMethods.HandleException(NativeMethods.face_Ptr_LBPHFaceRecognizer_get(smartPtr, out var rawPtr));
+        return new LBPHFaceRecognizer(smartPtr, rawPtr);
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <returns></returns>
+    public virtual int GetGridX()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.face_LBPHFaceRecognizer_getGridX(Handle, out var ret));
+        return ret;
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="val"></param>
+    public virtual void SetGridX(int val)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.face_LBPHFaceRecognizer_setGridX(Handle, val));
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <returns></returns>
+    public virtual int GetGridY()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.face_LBPHFaceRecognizer_getGridY(Handle, out var ret));
+        return ret;
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="val"></param>
+    public virtual void SetGridY(int val)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.face_LBPHFaceRecognizer_setGridY(Handle, val));
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <returns></returns>
+    public virtual int GetRadius()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.face_LBPHFaceRecognizer_getRadius(Handle, out var ret));
+        return ret;
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="val"></param>
+    public virtual void SetRadius(int val)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.face_LBPHFaceRecognizer_setRadius(Handle, val));
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <returns></returns>
+    public virtual int GetNeighbors()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.face_LBPHFaceRecognizer_getNeighbors(Handle, out var ret));
+        return ret;
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="val"></param>
+    public virtual void SetNeighbors(int val)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.face_LBPHFaceRecognizer_setNeighbors(Handle, val));
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <returns></returns>
+    public new virtual double GetThreshold()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.face_LBPHFaceRecognizer_getThreshold(Handle, out var ret));
+        return ret;
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="val"></param>
+    public new virtual void SetThreshold(double val)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.face_LBPHFaceRecognizer_setThreshold(Handle, val));
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <returns></returns>
+    public virtual Mat[] GetHistograms()
+    {
+        ThrowIfDisposed();
+        using var resultVector = new VectorOfMat();
+        NativeMethods.HandleException(
+            NativeMethods.face_LBPHFaceRecognizer_getHistograms(Handle, resultVector.CvPtr));
+        return resultVector.ToArray();
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <returns></returns>
+    public virtual Mat GetLabels()
+    {
+        ThrowIfDisposed();
+        var result = new Mat();
+        NativeMethods.HandleException(
+            NativeMethods.face_LBPHFaceRecognizer_getLabels(Handle, result.CvPtr));
+        return result;
+    }
+}

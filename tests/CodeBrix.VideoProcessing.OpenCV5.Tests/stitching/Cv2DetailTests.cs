@@ -1,0 +1,64 @@
+using System.Runtime.InteropServices;
+using CodeBrix.VideoProcessing.OpenCV5.Detail;
+using CodeBrix.VideoProcessing.OpenCV5.XFeatures2D;
+using Xunit;
+
+namespace CodeBrix.VideoProcessing.OpenCV5.Tests.Stitching; //was previously: OpenCvSharp.Tests.Stitching;
+
+public class Cv2DetailTests: TestBase
+{
+    // Platform check for conditional test execution
+    public static bool IsWindowsOrLinux => RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
+
+    //[Fact] // TODO mac test fails
+    [Fact(Skip = "Only runs on Windows or Linux", SkipUnless = nameof(IsWindowsOrLinux))]
+    public void ComputeImageFeaturesTest()
+    {
+        using var featuresFinder = AKAZE.Create();
+        using var image = LoadImage("abbey_road.jpg", ImreadModes.Grayscale);
+
+        using var features = Cv2.Detail.ComputeImageFeatures(featuresFinder, image);
+        Assert.NotNull(features);
+        //Assert.NotEqual(0, features.ImgIdx);
+        Assert.Equal(image.Size(), features.ImgSize);
+        Assert.NotEmpty(features.Keypoints);
+        Assert.NotNull(features.Descriptors);
+        Assert.False(features.Descriptors.Empty());
+    }
+
+    [Fact]
+    public void BestOf2NearestMatcherTest()
+    {
+        using var featuresFinder = AKAZE.Create();
+        using var image1 = LoadImage("tsukuba_left.png", ImreadModes.Grayscale);
+        using var image2 = LoadImage("tsukuba_right.png", ImreadModes.Grayscale);
+
+        using var features1 = Cv2.Detail.ComputeImageFeatures(featuresFinder, image1);
+        using var features2 = Cv2.Detail.ComputeImageFeatures(featuresFinder, image2);
+
+        using var matcher = new BestOf2NearestMatcher();
+        using var matchesInfo = matcher.Apply(features1, features2);
+        Assert.NotEmpty(matchesInfo.Matches);
+        Assert.NotEmpty(matchesInfo.InliersMask);
+        Assert.False(matchesInfo.H.Empty());
+        Assert.True(matchesInfo.Confidence > 0);
+    }
+
+    [Fact]
+    public void AffineBestOf2NearestMatcherTest()
+    {
+        using var featuresFinder = AKAZE.Create();
+        using var image1 = LoadImage("tsukuba_left.png", ImreadModes.Grayscale);
+        using var image2 = LoadImage("tsukuba_right.png", ImreadModes.Grayscale);
+
+        using var features1 = Cv2.Detail.ComputeImageFeatures(featuresFinder, image1);
+        using var features2 = Cv2.Detail.ComputeImageFeatures(featuresFinder, image2);
+
+        using var matcher = new AffineBestOf2NearestMatcher();
+        using var matchesInfo = matcher.Apply(features1, features2);
+        Assert.NotEmpty(matchesInfo.Matches);
+        Assert.NotEmpty(matchesInfo.InliersMask);
+        Assert.False(matchesInfo.H.Empty());
+        Assert.True(matchesInfo.Confidence > 0);
+    }
+}

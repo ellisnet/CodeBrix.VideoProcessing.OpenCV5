@@ -1,0 +1,114 @@
+using System;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+
+namespace CodeBrix.VideoProcessing.OpenCV5.XImgProc.Segmentation; //was previously: OpenCvSharp.XImgProc.Segmentation;
+
+/// <summary>
+/// Graph Based Segmentation Algorithm.
+/// The class implements the algorithm described in @cite PFF2004.
+/// </summary>
+public class GraphSegmentation : Algorithm
+{
+    internal IntPtr PtrObj { get; }
+
+    /// <summary>
+    /// Creates instance by raw pointer
+    /// </summary>
+    private GraphSegmentation(IntPtr smartPtr, IntPtr rawPtr)
+        : base(smartPtr, rawPtr, p => NativeMethods.HandleException(NativeMethods.ximgproc_segmentation_Ptr_GraphSegmentation_delete(p)))
+    {
+        PtrObj = smartPtr;
+    }
+
+    /// <summary>
+    /// Creates a graph based segmentor
+    /// </summary>
+    /// <param name="sigma">The sigma parameter, used to smooth image</param>
+    /// <param name="k">The k parameter of the algorithm</param>
+    /// <param name="minSize">The minimum size of segments</param>
+    /// <returns></returns>
+    public static GraphSegmentation Create(double sigma= 0.5, float k = 300, int minSize = 100)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_createGraphSegmentation(sigma, k, minSize, out var smartPtr));
+        NativeMethods.HandleException(NativeMethods.ximgproc_segmentation_Ptr_GraphSegmentation_get(smartPtr, out var rawPtr));
+        return new GraphSegmentation(smartPtr, rawPtr);
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    public virtual double Sigma
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.ximgproc_segmentation_GraphSegmentation_getSigma(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.ximgproc_segmentation_GraphSegmentation_setSigma(Handle, value));
+        }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    public virtual float K
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.ximgproc_segmentation_GraphSegmentation_getK(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.ximgproc_segmentation_GraphSegmentation_setK(Handle, value));
+        }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    public virtual int MinSize
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.ximgproc_segmentation_GraphSegmentation_getMinSize(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.ximgproc_segmentation_GraphSegmentation_setMinSize(Handle, value));
+        }
+    }
+
+    /// <summary>
+    /// Segment an image and store output in dst
+    /// </summary>
+    /// <param name="src">The input image. Any number of channel (1 (Eg: Gray), 3 (Eg: RGB), 4 (Eg: RGB-D)) can be provided</param>
+    /// <param name="dst">The output segmentation. It's a CV_32SC1 Mat with the same number of cols and rows as input image, with an unique, sequential, id for each pixel.</param>
+    public virtual void ProcessImage(InputArray src, OutputArray dst)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_GraphSegmentation_processImage(Handle, src.Proxy, dst.Proxy));
+
+        GC.KeepAlive(src.Source);
+        GC.KeepAlive(dst.Source);
+    }
+
+    }

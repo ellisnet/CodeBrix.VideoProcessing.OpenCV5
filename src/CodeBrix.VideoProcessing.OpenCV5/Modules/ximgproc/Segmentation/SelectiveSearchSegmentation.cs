@@ -1,0 +1,183 @@
+using System;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+using CodeBrix.VideoProcessing.OpenCV5.Internal.Vectors;
+
+// ReSharper disable UnusedMember.Global
+
+namespace CodeBrix.VideoProcessing.OpenCV5.XImgProc.Segmentation; //was previously: OpenCvSharp.XImgProc.Segmentation;
+
+/// <summary>
+/// Selective search segmentation algorithm.
+/// The class implements the algorithm described in @cite uijlings2013selective.
+/// </summary>
+public class SelectiveSearchSegmentation : Algorithm
+{
+    /// <summary>
+    /// Creates instance by raw pointer
+    /// </summary>
+    private SelectiveSearchSegmentation(IntPtr smartPtr, IntPtr rawPtr)
+        : base(smartPtr, rawPtr, p => NativeMethods.HandleException(NativeMethods.ximgproc_segmentation_Ptr_SelectiveSearchSegmentation_delete(p)))
+    { }
+    /// <summary>
+    /// Create a new SelectiveSearchSegmentation class.
+    /// </summary>
+    /// <returns></returns>
+    public static SelectiveSearchSegmentation Create()
+    {
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_createSelectiveSearchSegmentation(out var smartPtr));
+        NativeMethods.HandleException(NativeMethods.ximgproc_segmentation_Ptr_SelectiveSearchSegmentation_get(smartPtr, out var rawPtr));
+        return new SelectiveSearchSegmentation(smartPtr, rawPtr);
+    }
+        
+    /// <summary>
+    /// Set a image used by switch* functions to initialize the class
+    /// </summary>
+    /// <param name="img">The image</param>
+    public virtual void SetBaseImage(InputArray img)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_SelectiveSearchSegmentation_setBaseImage(Handle, img.Proxy));
+
+        GC.KeepAlive(img.Source);
+    }
+
+    /// <summary>
+    /// Initialize the class with the 'Single stragegy' parameters describled in @cite uijlings2013selective.
+    /// </summary>
+    /// <param name="k">The k parameter for the graph segmentation</param>
+    /// <param name="sigma">The sigma parameter for the graph segmentation</param>
+    public virtual void SwitchToSingleStrategy(int k = 200, float sigma = 0.8f)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_SelectiveSearchSegmentation_switchToSingleStrategy(Handle, k, sigma));
+    }
+
+    /// <summary>
+    /// Initialize the class with the 'Selective search fast' parameters describled in @cite uijlings2013selective.
+    /// </summary>
+    /// <param name="baseK">The k parameter for the first graph segmentation</param>
+    /// <param name="incK">The increment of the k parameter for all graph segmentations</param>
+    /// <param name="sigma">The sigma parameter for the graph segmentation</param>
+    public virtual void SwitchToSelectiveSearchFast(int baseK = 150, int incK = 150, float sigma = 0.8f)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_SelectiveSearchSegmentation_switchToSelectiveSearchFast(Handle, baseK, incK, sigma));
+    }
+
+    /// <summary>
+    /// Initialize the class with the 'Selective search fast' parameters describled in @cite uijlings2013selective.
+    /// </summary>
+    /// <param name="baseK">The k parameter for the first graph segmentation</param>
+    /// <param name="incK">The increment of the k parameter for all graph segmentations</param>
+    /// <param name="sigma">The sigma parameter for the graph segmentation</param>
+    public virtual void SwitchToSelectiveSearchQuality(int baseK = 150, int incK = 150, float sigma = 0.8f)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_SelectiveSearchSegmentation_switchToSelectiveSearchQuality(Handle, baseK, incK, sigma));
+    }
+
+    /// <summary>
+    /// Add a new image in the list of images to process.
+    /// </summary>
+    /// <param name="img">The image</param>
+    public virtual void AddImage(InputArray img)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_SelectiveSearchSegmentation_addImage(Handle, img.Proxy));
+
+        GC.KeepAlive(img.Source);
+    }
+
+    /// <summary>
+    /// Clear the list of images to process
+    /// </summary>
+    public virtual void ClearImages()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_SelectiveSearchSegmentation_clearImages(Handle));
+    }
+
+    /// <summary>
+    /// Add a new graph segmentation in the list of graph segmentations to process.
+    /// </summary>
+    /// <param name="g">The graph segmentation</param>
+    public virtual void AddGraphSegmentation(GraphSegmentation g)
+    {
+        ThrowIfDisposed();
+        if (g is null)
+            throw new ArgumentNullException(nameof(g));
+        g.ThrowIfDisposed();
+
+        if (g.PtrObj == IntPtr.Zero)
+            throw new ArgumentException("PtrObj is zero", nameof(g));
+
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_SelectiveSearchSegmentation_addGraphSegmentation(Handle, g.PtrObj));
+
+        GC.KeepAlive(g);
+    }
+
+    /// <summary>
+    /// Clear the list of graph segmentations to process
+    /// </summary>
+    public virtual void ClearGraphSegmentations()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_SelectiveSearchSegmentation_clearGraphSegmentations(Handle));
+    }
+
+    /// <summary>
+    /// Add a new strategy in the list of strategy to process.
+    /// </summary>
+    /// <param name="s">The strategy</param>
+    public virtual void AddStrategy(SelectiveSearchSegmentationStrategy s)
+    {
+        ThrowIfDisposed();
+        if (s is null)
+            throw new ArgumentNullException(nameof(s));
+        s.ThrowIfDisposed();
+        if (s.PtrObj == IntPtr.Zero)
+            throw new ArgumentException("s.PtrObj is zero");
+
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_SelectiveSearchSegmentation_addStrategy(Handle, s.PtrObj));
+
+        GC.KeepAlive(s);
+    }
+
+    /// <summary>
+    /// Clear the list of strategy to process;
+    /// </summary>
+    public virtual void ClearStrategies()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_SelectiveSearchSegmentation_clearStrategies(Handle));
+    }
+
+    /// <summary>
+    /// Based on all images, graph segmentations and stragies, computes all possible rects and return them
+    /// </summary>
+    /// <param name="rects">The list of rects. The first ones are more relevents than the lasts ones.</param>
+    public virtual void Process(out Rect[] rects)
+    {
+        ThrowIfDisposed();
+
+        using var rectsVec = new StdVector<Rect>();
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_segmentation_SelectiveSearchSegmentation_process(Handle, rectsVec.CvPtr));
+        rects = rectsVec.ToArray();
+
+    }
+
+    }

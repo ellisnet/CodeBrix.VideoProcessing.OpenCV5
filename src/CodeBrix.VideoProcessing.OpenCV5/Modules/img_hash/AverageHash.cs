@@ -1,0 +1,44 @@
+using System;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+
+namespace CodeBrix.VideoProcessing.OpenCV5.ImgHash; //was previously: OpenCvSharp.ImgHash;
+
+/// <inheritdoc />
+/// <summary>
+/// Computes average hash value of the input image.
+/// This is a fast image hashing algorithm, but only work on simple case. For more details, 
+/// please refer to @cite lookslikeit
+/// </summary>
+public class AverageHash : ImgHashBase
+{
+    /// <summary>
+    /// cv::Ptr&lt;T&gt;
+    /// </summary>
+    /// <summary>
+    /// 
+    /// </summary>
+    private AverageHash(IntPtr smartPtr, IntPtr rawPtr)
+        : base(smartPtr, rawPtr, p => NativeMethods.HandleException(NativeMethods.img_hash_Ptr_AverageHash_delete(p)))
+    { }
+    /// <summary>
+    /// Constructor
+    /// </summary>
+    /// <returns></returns>
+    public static AverageHash Create()
+    {
+        NativeMethods.HandleException(
+            NativeMethods.img_hash_AverageHash_create(out var smartPtr));
+        NativeMethods.HandleException(NativeMethods.img_hash_Ptr_AverageHash_get(smartPtr, out var rawPtr));
+        return new AverageHash(smartPtr, rawPtr);
+    }
+
+    /*
+    /// <inheritdoc />
+    /// <param name="inputArr">input image want to compute hash value, type should be CV_8UC4, CV_8UC3 or CV_8UC1.</param>
+    /// <param name="outputArr">Hash value of input, it will contain 16 hex decimal number, return type is CV_8U</param>
+    /// <returns></returns>
+    public override void Compute(InputArray inputArr, OutputArray outputArr)
+    {
+        base.Compute(inputArr, outputArr);
+    }*/
+}

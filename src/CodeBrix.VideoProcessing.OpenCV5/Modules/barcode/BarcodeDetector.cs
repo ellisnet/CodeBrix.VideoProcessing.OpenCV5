@@ -1,0 +1,99 @@
+using System;
+using System.Collections.Generic;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+using CodeBrix.VideoProcessing.OpenCV5.Internal.Vectors;
+
+namespace CodeBrix.VideoProcessing.OpenCV5; //was previously: OpenCvSharp;
+
+/// <summary>
+/// BarcodeDetector use a super resolution model.
+/// super resolution model is applied to zoom in Barcode when it is small.
+/// </summary>
+public class BarcodeDetector : CvObject
+{
+    /// <summary>
+    /// Initialize the BarcodeDetector.
+    /// Optionally loads an ONNX super resolution model that is applied to zoom in barcodes when they are small.
+    /// Pass an empty string to create the default detector without a super resolution model.
+    /// </summary>
+    /// <param name="superResolutionModelPath">ONNX file path for the super resolution model</param>
+    public BarcodeDetector(
+        string superResolutionModelPath = "")
+    {
+        NativeMethods.HandleException(
+            NativeMethods.barcode_BarcodeDetector_create(
+                superResolutionModelPath,
+                out var p));
+        SetSafeHandle(new OpenCvPtrSafeHandle(p, ownsHandle: true,
+            releaseAction: ptr => NativeMethods.HandleException(NativeMethods.barcode_BarcodeDetector_delete(ptr))));
+    }
+
+    /// <summary>
+    /// Set detector downsampling threshold.
+    /// 
+    /// By default, the detect method resizes the input image to this limit if the smallest image size is is greater than the threshold.
+    /// Increasing this value can improve detection accuracy and the number of results at the expense of performance.
+    /// Correlates with detector scales.Setting this to a large value will disable downsampling.
+    /// </summary>
+    /// <param name="thresh">downsampling limit to apply (default 512).</param>
+    public void SetDownsamplingThreshold(double thresh)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.barcode_BarcodeDetector_setDownsamplingThreshold(Handle, thresh));
+    }
+
+    /// <summary>
+    /// Set detector gradient magnitude threshold.
+    /// 
+    /// Sets the coherence threshold for detected bounding boxes.
+    /// Increasing this value will generate a closer fitted bounding box width and can reduce false-positives.
+    /// Values between 16 and 1024 generally work, while too high of a value will remove valid detections.
+    /// </summary>
+    /// <param name="thresh">gradient magnitude threshold (default 64).</param>
+    public void SetGradientThreshold(double thresh)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.barcode_BarcodeDetector_setGradientThreshold(Handle, thresh));
+    }
+
+    /// <summary>
+    /// Set detector box filter sizes.
+    /// 
+    /// Adjusts the value and the number of box filters used in the detect step.
+    /// The filter sizes directly correlate with the expected line widths for a barcode.Corresponds to expected barcode distance.
+    /// If the downsampling limit is increased, filter sizes need to be adjusted in an inversely proportional way.
+    /// </summary>
+    /// <param name="sizes">box filter sizes, relative to minimum dimension of the image (default [0.01, 0.03, 0.06, 0.08]).</param>
+    public void SetDetectorScales(IEnumerable<float> sizes)
+    {
+        if (sizes is null)
+            throw new ArgumentNullException(nameof(sizes));
+        using var sizesVec = new StdVector<float>(sizes);
+        NativeMethods.HandleException(
+            NativeMethods.barcode_BarcodeDetector_setDetectorScales(Handle, sizesVec.CvPtr));
+    }
+
+    /// <summary>
+    /// Both detects and decodes barcode.
+    /// To simplify the usage, there is a only API: detectAndDecode
+    /// </summary>
+    /// <param name="inputImage">supports grayscale or color(BGR) image.</param>
+    /// <param name="points">optional output vector of vertices of the found  barcode rectangle. Will be empty if not found.</param>
+    /// <param name="results">list of decoded string.</param>
+    /// <param name="types">list of decoded types.</param>
+    public void DetectAndDecode(InputArray inputImage, out Point2f[] points, out string[] results, out string[] types)
+    {
+        using var pointsVec = new StdVector<Point2f>();
+        using var infos = new VectorOfString();
+        using var resultTypes = new VectorOfString();
+        NativeMethods.HandleException(
+            NativeMethods.barcode_BarcodeDetector_detectAndDecodeWithType(
+                Handle, inputImage.Proxy, pointsVec.CvPtr, infos.CvPtr, resultTypes.CvPtr));
+
+        points = pointsVec.ToArray();
+        results = infos.ToArray();
+        types = resultTypes.ToArray();
+        GC.KeepAlive(inputImage.Source);
+    }
+
+    }

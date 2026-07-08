@@ -1,0 +1,31 @@
+using System;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+using CodeBrix.VideoProcessing.OpenCV5.Internal.Vectors;
+
+namespace CodeBrix.VideoProcessing.OpenCV5; //was previously: OpenCvSharp;
+
+/// <summary>
+/// An abstract class providing interface for text detection algorithms
+/// </summary>
+public abstract class TextDetector : CvObject
+{
+    /// <summary>
+    /// Method that provides a quick and simple interface to detect text inside an image
+    /// </summary>
+    /// <param name="inputImage">an image to process</param>
+    /// <param name="bbox"> a vector of Rect that will store the detected word bounding box</param>
+    /// <param name="confidence">a vector of float that will be updated with the confidence the classifier has for the selected bounding box</param>
+    public virtual void Detect(InputArray inputImage, out Rect[] bbox, out float[] confidence)
+    {
+        using (var bboxVec = new StdVector<Rect>())
+        using (var confidenceVec = new StdVector<float>())
+        {
+            NativeMethods.HandleException(
+                NativeMethods.text_TextDetector_detect(Handle, inputImage.Proxy, bboxVec.CvPtr, confidenceVec.CvPtr));
+            bbox = bboxVec.ToArray();
+            confidence = confidenceVec.ToArray();
+        }
+
+        GC.KeepAlive(inputImage.Source);
+    }
+}

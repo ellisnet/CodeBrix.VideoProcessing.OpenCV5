@@ -1,0 +1,58 @@
+using System;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+
+// ReSharper disable once CheckNamespace
+namespace CodeBrix.VideoProcessing.OpenCV5.XImgProc; //was previously: OpenCvSharp.XImgProc;
+
+/// <summary>
+/// Interface for implementations of Fast Global Smoother filter.
+/// </summary>
+// ReSharper disable once InconsistentNaming
+public class FastGlobalSmootherFilter : Algorithm
+{
+
+    /// <summary>
+    /// Creates instance by raw pointer
+    /// </summary>
+    private FastGlobalSmootherFilter(IntPtr smartPtr, IntPtr rawPtr)
+        : base(smartPtr, rawPtr, p => NativeMethods.HandleException(NativeMethods.ximgproc_Ptr_FastGlobalSmootherFilter_delete(p)))
+    { }
+
+    /// <summary>
+    /// Factory method, create instance of FastGlobalSmootherFilter and execute the initialization routines.
+    /// </summary>
+    /// <param name="guide">image serving as guide for filtering. It should have 8-bit depth and either 1 or 3 channels.</param>
+    /// <param name="lambda">parameter defining the amount of regularization</param>
+    /// <param name="sigmaColor">parameter, that is similar to color space sigma in bilateralFilter.</param>
+    /// <param name="lambdaAttenuation">internal parameter, defining how much lambda decreases after each iteration. Normally,
+    /// it should be 0.25. Setting it to 1.0 may lead to streaking artifacts.</param>
+    /// <param name="numIter">number of iterations used for filtering, 3 is usually enough.</param>
+    /// <returns></returns>
+    public static FastGlobalSmootherFilter Create(
+        InputArray guide, double lambda, double sigmaColor, double lambdaAttenuation = 0.25, int numIter = 3)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_createFastGlobalSmootherFilter(
+                guide.Proxy, lambda, sigmaColor, lambdaAttenuation, numIter, out var smartPtr));
+            
+        GC.KeepAlive(guide.Source); 
+        NativeMethods.HandleException(NativeMethods.ximgproc_Ptr_FastGlobalSmootherFilter_get(smartPtr, out var rawPtr));
+        return new FastGlobalSmootherFilter(smartPtr, rawPtr);
+    }
+
+    /// <summary>
+    /// Apply smoothing operation to the source image.
+    /// </summary>
+    /// <param name="src">source image for filtering with unsigned 8-bit or signed 16-bit or floating-point 32-bit depth and up to 4 channels.</param>
+    /// <param name="dst">destination image.</param>
+    public virtual void Filter(InputArray src, OutputArray dst)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.ximgproc_FastGlobalSmootherFilter_filter(
+                Handle, src.Proxy, dst.Proxy));
+
+        GC.KeepAlive(src.Source);
+    }
+}

@@ -1,0 +1,75 @@
+using System.Collections.Generic;
+using System.Linq;
+using CodeBrix.VideoProcessing.OpenCV5.Internal.Util;
+
+namespace CodeBrix.VideoProcessing.OpenCV5.Internal.Vectors; //was previously: OpenCvSharp.Internal.Vectors;
+
+/// <summary> 
+/// </summary>
+public class VectorOfVectorDMatch : CvObject, IStdVector<DMatch[]>
+{
+    /// <summary>
+    /// Constructor
+    /// </summary>
+    public VectorOfVectorDMatch()
+    {
+        var p = NativeMethods.vector_vector_DMatch_new1();
+        SetSafeHandle(new OpenCvPtrSafeHandle(p, ownsHandle: false, releaseAction: null));
+    }
+        
+    /// <summary>
+    /// Releases unmanaged resources
+    /// </summary>
+    protected override void DisposeUnmanaged()
+    {
+        NativeMethods.vector_vector_DMatch_delete(CvPtr);
+        base.DisposeUnmanaged();
+    }
+
+    /// <summary>
+    /// vector.size()
+    /// </summary>
+    public int GetSize1()
+    {
+        var res = NativeMethods.vector_vector_DMatch_getSize1(Handle);
+        return (int)res;
+    }
+
+    /// <summary>
+    /// vector.size()
+    /// </summary>
+    public int Size => GetSize1();
+
+    /// <summary>
+    /// vector[i].size()
+    /// </summary>
+    public IReadOnlyList<long> GetSize2()
+    {
+        var size1 = GetSize1();
+        var size2 = new nuint[size1];
+        NativeMethods.vector_vector_DMatch_getSize2(Handle, size2);
+        return size2.Select(s => (long)s).ToArray();
+    }
+
+    /// <summary>
+    /// Converts std::vector to managed array
+    /// </summary>
+    /// <returns></returns>
+    public DMatch[][] ToArray()
+    {
+        var size1 = GetSize1();
+        if (size1 == 0)
+            return [];
+        var size2 = GetSize2();
+
+        var ret = new DMatch[size1][];
+        for (var i = 0; i < size1; i++)
+        {
+            ret[i] = new DMatch[size2[i]];
+        }
+
+        using var retPtr = new ArrayAddress2<DMatch>(ret);
+        NativeMethods.vector_vector_DMatch_copy(Handle, retPtr.GetPointer());
+        return ret;
+    }
+}

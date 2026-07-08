@@ -1,0 +1,181 @@
+#pragma once
+
+#ifndef NO_CONTRIB
+
+// ReSharper disable IdentifierTypo
+// ReSharper disable CppInconsistentNaming
+// ReSharper disable CppNonInlineFunctionDefinitionInHeaderFile
+
+#include "include_opencv.h"
+
+/// <summary>
+/// Plain-C struct for marshaling EdgeDrawing::Params across the P/Invoke boundary.
+/// All bool fields are represented as int (0 = false, non-zero = true).
+/// Layout must stay in sync with OpenCvSharp.XImgProc.EdgeDrawingParams in C#.
+/// </summary>
+struct CvEdgeDrawingParams
+{
+    int    PFmode;
+    int    EdgeDetectionOperator;
+    int    GradientThresholdValue;
+    int    AnchorThresholdValue;
+    int    ScanInterval;
+    int    MinPathLength;
+    float  Sigma;
+    int    SumFlag;
+    int    NFAValidation;
+    int    MinLineLength;
+    double MaxDistanceBetweenTwoLines;
+    double LineFitErrorThreshold;
+    double MaxErrorThreshold;
+};
+
+
+CVAPI(ExceptionStatus) ximgproc_Ptr_EdgeDrawing_delete(cv::Ptr<cv::ximgproc::EdgeDrawing> *obj)
+{
+    return cvTry([&] {
+    delete obj;
+    });
+}
+
+CVAPI(ExceptionStatus) ximgproc_Ptr_EdgeDrawing_get(cv::Ptr<cv::ximgproc::EdgeDrawing> *ptr, cv::ximgproc::EdgeDrawing **returnValue)
+{
+    return cvTry([&] {
+    *returnValue = ptr->get();
+    });
+}
+
+CVAPI(ExceptionStatus) ximgproc_createEdgeDrawing(cv::Ptr<cv::ximgproc::EdgeDrawing> **returnValue)
+{
+    return cvTry([&] {
+    const auto ptr = cv::ximgproc::createEdgeDrawing();
+    *returnValue = new cv::Ptr<cv::ximgproc::EdgeDrawing>(ptr);
+    });
+}
+
+
+CVAPI(ExceptionStatus) ximgproc_EdgeDrawing_detectEdges(cv::ximgproc::EdgeDrawing *obj, const interop::InputArrayProxy* src)
+{
+    return cvTry([&] {
+    obj->detectEdges(InProxy(*src));
+    });
+}
+
+CVAPI(ExceptionStatus) ximgproc_EdgeDrawing_getEdgeImage(cv::ximgproc::EdgeDrawing *obj, const interop::OutputArrayProxy* dst)
+{
+    return cvTry([&] {
+    obj->getEdgeImage(OutProxy(*dst));
+    });
+}
+
+CVAPI(ExceptionStatus) ximgproc_EdgeDrawing_getGradientImage(cv::ximgproc::EdgeDrawing *obj, const interop::OutputArrayProxy* dst)
+{
+    return cvTry([&] {
+    obj->getGradientImage(OutProxy(*dst));
+    });
+}
+
+CVAPI(ExceptionStatus) ximgproc_EdgeDrawing_getSegments(cv::ximgproc::EdgeDrawing *obj, std::vector<std::vector<cv::Point>> *returnValue)
+{
+    return cvTry([&] {
+    *returnValue = obj->getSegments();
+    });
+}
+
+CVAPI(ExceptionStatus) ximgproc_EdgeDrawing_getSegmentIndicesOfLines(cv::ximgproc::EdgeDrawing *obj, std::vector<int> *returnValue)
+{
+    return cvTry([&] {
+    *returnValue = obj->getSegmentIndicesOfLines();
+    });
+}
+
+CVAPI(ExceptionStatus) ximgproc_EdgeDrawing_detectLines(cv::ximgproc::EdgeDrawing *obj, const interop::OutputArrayProxy* lines)
+{
+    return cvTry([&] {
+    obj->detectLines(OutProxy(*lines));
+    });
+}
+
+CVAPI(ExceptionStatus) ximgproc_EdgeDrawing_detectLines_vector(cv::ximgproc::EdgeDrawing *obj, std::vector<cv::Vec4f> *lines)
+{
+    return cvTry([&] {
+    obj->detectLines(*lines);
+    });
+}
+
+CVAPI(ExceptionStatus) ximgproc_EdgeDrawing_detectEllipses(cv::ximgproc::EdgeDrawing *obj, const interop::OutputArrayProxy* ellipses)
+{
+    return cvTry([&] {
+    obj->detectEllipses(OutProxy(*ellipses));
+    });
+}
+
+CVAPI(ExceptionStatus) ximgproc_EdgeDrawing_detectEllipses_vector(cv::ximgproc::EdgeDrawing *obj, std::vector<cv::Vec6d> *ellipses)
+{
+    return cvTry([&] {
+    obj->detectEllipses(*ellipses);
+    });
+}
+
+CVAPI(ExceptionStatus) ximgproc_EdgeDrawing_getParams(cv::ximgproc::EdgeDrawing *obj, CvEdgeDrawingParams *returnValue)
+{
+    return cvTry([&] {
+    const auto &p = obj->params;
+    returnValue->PFmode                      = p.PFmode ? 1 : 0;
+    returnValue->EdgeDetectionOperator       = p.EdgeDetectionOperator;
+    returnValue->GradientThresholdValue      = p.GradientThresholdValue;
+    returnValue->AnchorThresholdValue        = p.AnchorThresholdValue;
+    returnValue->ScanInterval                = p.ScanInterval;
+    returnValue->MinPathLength               = p.MinPathLength;
+    returnValue->Sigma                       = p.Sigma;
+    returnValue->SumFlag                     = p.SumFlag ? 1 : 0;
+    returnValue->NFAValidation               = p.NFAValidation ? 1 : 0;
+    returnValue->MinLineLength               = p.MinLineLength;
+    returnValue->MaxDistanceBetweenTwoLines  = p.MaxDistanceBetweenTwoLines;
+    returnValue->LineFitErrorThreshold       = p.LineFitErrorThreshold;
+    returnValue->MaxErrorThreshold           = p.MaxErrorThreshold;
+    });
+}
+
+CVAPI(ExceptionStatus) ximgproc_EdgeDrawing_setParams(cv::ximgproc::EdgeDrawing *obj, CvEdgeDrawingParams *params)
+{
+    return cvTry([&] {
+    cv::ximgproc::EdgeDrawing::Params p;
+    p.PFmode                     = params->PFmode != 0;
+    p.EdgeDetectionOperator      = params->EdgeDetectionOperator;
+    p.GradientThresholdValue     = params->GradientThresholdValue;
+    p.AnchorThresholdValue       = params->AnchorThresholdValue;
+    p.ScanInterval               = params->ScanInterval;
+    p.MinPathLength              = params->MinPathLength;
+    p.Sigma                      = params->Sigma;
+    p.SumFlag                    = params->SumFlag != 0;
+    p.NFAValidation              = params->NFAValidation != 0;
+    p.MinLineLength              = params->MinLineLength;
+    p.MaxDistanceBetweenTwoLines = params->MaxDistanceBetweenTwoLines;
+    p.LineFitErrorThreshold      = params->LineFitErrorThreshold;
+    p.MaxErrorThreshold          = params->MaxErrorThreshold;
+    obj->setParams(p);
+    });
+}
+
+CVAPI(ExceptionStatus) ximgproc_EdgeDrawing_Params_default(CvEdgeDrawingParams *returnValue)
+{
+    return cvTry([&] {
+    cv::ximgproc::EdgeDrawing::Params p;
+    returnValue->PFmode                     = p.PFmode ? 1 : 0;
+    returnValue->EdgeDetectionOperator      = p.EdgeDetectionOperator;
+    returnValue->GradientThresholdValue     = p.GradientThresholdValue;
+    returnValue->AnchorThresholdValue       = p.AnchorThresholdValue;
+    returnValue->ScanInterval               = p.ScanInterval;
+    returnValue->MinPathLength              = p.MinPathLength;
+    returnValue->Sigma                      = p.Sigma;
+    returnValue->SumFlag                    = p.SumFlag ? 1 : 0;
+    returnValue->NFAValidation              = p.NFAValidation ? 1 : 0;
+    returnValue->MinLineLength              = p.MinLineLength;
+    returnValue->MaxDistanceBetweenTwoLines = p.MaxDistanceBetweenTwoLines;
+    returnValue->LineFitErrorThreshold      = p.LineFitErrorThreshold;
+    returnValue->MaxErrorThreshold          = p.MaxErrorThreshold;
+    });
+}
+
+#endif // NO_CONTRIB

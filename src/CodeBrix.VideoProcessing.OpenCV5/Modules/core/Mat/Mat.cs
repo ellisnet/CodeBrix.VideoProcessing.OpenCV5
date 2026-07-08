@@ -1,0 +1,3835 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Contracts;
+using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+
+namespace CodeBrix.VideoProcessing.OpenCV5; //was previously: OpenCvSharp;
+
+/// <summary>
+/// OpenCV C++ n-dimensional dense array class (cv::Mat)
+/// </summary>
+public partial class Mat : CvObject
+{
+    #region Init & Disposal
+
+    /// <summary>
+    /// typeof(T) -> MatType
+    /// </summary>
+    protected static readonly IReadOnlyDictionary<Type, MatType> TypeMap = Internal.Util.MatTypeMap.Map;
+
+    /// <summary>
+    /// Creates from native cv::Mat* pointer
+    /// </summary>
+    /// <param name="ptr"></param>
+    internal Mat(IntPtr ptr)
+    {
+        if (ptr == IntPtr.Zero)
+            throw new OpenCvSharpException("Native object address is NULL");
+        InitSafeHandle(ptr);
+    }
+
+    /// <summary>
+    /// Optional object whose native lifetime backs this Mat's pointer (e.g. the object that
+    /// owns the cv::Mat field this is a view into). Held only to keep that owner — and thus
+    /// the native memory — reachable for as long as this view is, so it cannot be
+    /// garbage-collected out from under the view.
+    /// </summary>
+    private readonly object? viewOwner;
+
+    /// <summary>
+    /// Creates a wrapper around an existing native cv::Mat* pointer.
+    /// </summary>
+    /// <param name="ptr">Native cv::Mat* pointer.</param>
+    /// <param name="ownsHandle">
+    /// <c>true</c> to delete the native Mat on disposal; <c>false</c> for a borrowed view that
+    /// must not be deleted (e.g. a cv::Mat field owned by another OpenCV object).
+    /// </param>
+    /// <param name="owner">
+    /// Optional owner of the native memory this view points into. Holding it keeps the owner
+    /// alive while this view is reachable (guards against GC, not against the owner being
+    /// explicitly disposed — that remains a use-after-dispose error).
+    /// </param>
+    internal Mat(IntPtr ptr, bool ownsHandle, object? owner = null)
+    {
+        if (ptr == IntPtr.Zero)
+            throw new OpenCvSharpException("Native object address is NULL");
+        viewOwner = owner;
+        InitSafeHandle(ptr, ownsHandle);
+    }
+
+    /// <summary>
+    /// Creates from native cv::Mat* pointer
+    /// </summary>
+    /// <param name="ptr"></param>
+    public static Mat FromNativePointer(IntPtr ptr) 
+        => new (ptr);
+
+    /// <summary>
+    /// Creates empty Mat
+    /// </summary>
+    public Mat()
+    {
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_new1(out var p));
+        InitSafeHandle(p);
+    }
+
+    /// <inheritdoc />
+    /// <summary>
+    /// </summary>
+    /// <param name="m"></param>
+    protected Mat(Mat m)
+    {
+        if (m is null)
+            throw new ArgumentNullException(nameof(m));
+        m.ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_new12(m.ptr, out var p));
+        pinLifetime = m.pinLifetime?.Ref();
+        if (p == IntPtr.Zero)
+            throw new OpenCvSharpException("imread failed.");
+        InitSafeHandle(p);
+    }
+
+    /// <summary>
+    /// Loads an image from a file. (cv::imread)
+    /// </summary>
+    /// <param name="fileName">Name of file to be loaded.</param>
+    /// <param name="flags">Specifies color type of the loaded image</param>
+    public Mat(string fileName, ImreadModes flags = ImreadModes.Color)
+    {
+        if (string.IsNullOrEmpty(fileName))
+            throw new ArgumentNullException(nameof(fileName));
+
+        NativeMethods.HandleException(
+            NativeMethods.imgcodecs_imread(fileName, (int) flags, out var p));
+        InitSafeHandle(p);
+    }
+
+    /// <summary>
+    /// constructs 2D matrix of the specified size and type
+    /// </summary>
+    /// <param name="rows">Number of rows in a 2D array.</param>
+    /// <param name="cols">Number of columns in a 2D array.</param>
+    /// <param name="type">Array type. Use MatType.CV_8UC1, ..., CV_64FC4 to create 1-4 channel matrices, 
+    /// or MatType. CV_8UC(n), ..., CV_64FC(n) to create multi-channel matrices.</param>
+    public Mat(int rows, int cols, MatType type)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_new2(rows, cols, type, out var p));
+        InitSafeHandle(p);
+    }
+
+    /// <summary>
+    /// constructs 2D matrix of the specified size and type
+    /// </summary>
+    /// <param name="size">2D array size: Size(cols, rows) . In the Size() constructor, 
+    /// the number of rows and the number of columns go in the reverse order.</param>
+    /// <param name="type">Array type. Use MatType.CV_8UC1, ..., CV_64FC4 to create 1-4 channel matrices, 
+    /// or MatType.CV_8UC(n), ..., CV_64FC(n) to create multi-channel matrices.</param>
+    public Mat(Size size, MatType type)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_new2(size.Height, size.Width, type, out var p));
+        InitSafeHandle(p);
+    }
+
+    /// <summary>
+    /// constructs 2D matrix and fills it with the specified Scalar value.
+    /// </summary>
+    /// <param name="rows">Number of rows in a 2D array.</param>
+    /// <param name="cols">Number of columns in a 2D array.</param>
+    /// <param name="type">Array type. Use MatType.CV_8UC1, ..., CV_64FC4 to create 1-4 channel matrices, 
+    /// or MatType. CV_8UC(n), ..., CV_64FC(n) to create multi-channel matrices.</param>
+    /// <param name="s">An optional value to initialize each matrix element with. 
+    /// To set all the matrix elements to the particular value after the construction, use SetTo(Scalar s) method .</param>
+    public Mat(int rows, int cols, MatType type, Scalar s)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_new3(rows, cols, type, s, out var p));
+        InitSafeHandle(p);
+    }
+
+    /// <summary>
+    /// constructs 2D matrix and fills it with the specified Scalar value.
+    /// </summary>
+    /// <param name="size">2D array size: Size(cols, rows) . In the Size() constructor, 
+    /// the number of rows and the number of columns go in the reverse order.</param>
+    /// <param name="type">Array type. Use MatType.CV_8UC1, ..., CV_64FC4 to create 1-4 channel matrices, 
+    /// or CV_8UC(n), ..., CV_64FC(n) to create multi-channel (up to CV_CN_MAX channels) matrices.</param>
+    /// <param name="s">An optional value to initialize each matrix element with. 
+    /// To set all the matrix elements to the particular value after the construction, use SetTo(Scalar s) method .</param>
+    public Mat(Size size, MatType type, Scalar s)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_new3(size.Height, size.Width, type, s, out var p));
+        InitSafeHandle(p);
+    }
+
+    /// <summary>
+    /// creates a matrix header for a part of the bigger matrix
+    /// </summary>
+    /// <param name="m">Array that (as a whole or partly) is assigned to the constructed matrix. 
+    /// No data is copied by these constructors. Instead, the header pointing to m data or its sub-array 
+    /// is constructed and associated with it. The reference counter, if any, is incremented. 
+    /// So, when you modify the matrix formed using such a constructor, you also modify the corresponding elements of m . 
+    /// If you want to have an independent copy of the sub-array, use Mat::clone() .</param>
+    /// <param name="rowRange">Range of the m rows to take. As usual, the range start is inclusive and the range end is exclusive. 
+    /// Use Range.All to take all the rows.</param>
+    /// <param name="colRange">Range of the m columns to take. Use Range.All to take all the columns.</param>
+    public Mat(Mat m, Range rowRange, Range? colRange = null)
+    {
+        if (m is null)
+            throw new ArgumentNullException(nameof(m));
+        m.ThrowIfDisposed();
+
+        IntPtr p;
+        if (colRange.HasValue)
+            NativeMethods.HandleException(NativeMethods.core_Mat_new4(m.ptr, rowRange, colRange.Value, out p));
+        else
+            NativeMethods.HandleException(NativeMethods.core_Mat_new5(m.ptr, rowRange, out p));
+        InitSafeHandle(p);
+        GC.KeepAlive(m);
+    }
+
+    /// <summary>
+    /// creates a matrix header for a part of the bigger matrix
+    /// </summary>
+    /// <param name="m">Array that (as a whole or partly) is assigned to the constructed matrix. 
+    /// No data is copied by these constructors. Instead, the header pointing to m data or its sub-array 
+    /// is constructed and associated with it. The reference counter, if any, is incremented. 
+    /// So, when you modify the matrix formed using such a constructor, you also modify the corresponding elements of m . 
+    /// If you want to have an independent copy of the sub-array, use Mat.Clone() .</param>
+    /// <param name="ranges">Array of selected ranges of m along each dimensionality.</param>
+    public Mat(Mat m, params Range[] ranges)
+    {
+        if (m is null)
+            throw new ArgumentNullException(nameof(m));
+        if (ranges is null)
+            throw new ArgumentNullException(nameof(ranges));
+        if (ranges.Length == 0)
+            throw new ArgumentException("empty ranges", nameof(ranges));
+        m.ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_new6(m.ptr, ranges, out var p));
+        InitSafeHandle(p);
+        GC.KeepAlive(m);
+    }
+
+    /// <summary>
+    /// creates a matrix header for a part of the bigger matrix
+    /// </summary>
+    /// <param name="m">Array that (as a whole or partly) is assigned to the constructed matrix. 
+    /// No data is copied by these constructors. Instead, the header pointing to m data or its sub-array 
+    /// is constructed and associated with it. The reference counter, if any, is incremented. 
+    /// So, when you modify the matrix formed using such a constructor, you also modify the corresponding elements of m . 
+    /// If you want to have an independent copy of the sub-array, use Mat.Clone() .</param>
+    /// <param name="roi">Region of interest.</param>
+    public Mat(Mat m, Rect roi)
+    {
+        if (m is null)
+            throw new ArgumentNullException(nameof(m));
+        m.ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_new7(m.ptr, roi, out var p));
+        InitSafeHandle(p);
+        GC.KeepAlive(m);
+    }
+
+    /// <summary>
+    /// constructor for matrix headers pointing to user-allocated data
+    /// </summary>
+    /// <param name="rows">Number of rows in a 2D array.</param>
+    /// <param name="cols">Number of columns in a 2D array.</param>
+    /// <param name="type">Array type. Use MatType.CV_8UC1, ..., CV_64FC4 to create 1-4 channel matrices, 
+    /// or MatType. CV_8UC(n), ..., CV_64FC(n) to create multi-channel matrices.</param>
+    /// <param name="data">Pointer to the user data. Matrix constructors that take data and step parameters do not allocate matrix data. 
+    /// Instead, they just initialize the matrix header that points to the specified data, which means that no data is copied. 
+    /// This operation is very efficient and can be used to process external data using OpenCV functions. 
+    /// The external data is not automatically de-allocated, so you should take care of it.</param>
+    /// <param name="step">Number of bytes each matrix row occupies. The value should include the padding bytes at the end of each row, if any.
+    /// If the parameter is missing (set to AUTO_STEP ), no padding is assumed and the actual step is calculated as cols*elemSize() .</param>
+    [Obsolete("Use Mat.FromPixelData instead. This constructor has been deprecated because the introduction of 'nint' made overload resolution confusing.", true)]
+    public Mat(int rows, int cols, MatType type, IntPtr data, long step = 0)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_new8(rows, cols, type, data, new IntPtr(step), out var p));
+        InitSafeHandle(p);
+    }
+
+    /// <summary>
+    /// constructor for matrix headers pointing to user-allocated data
+    /// </summary>
+    /// <param name="rows">Number of rows in a 2D array.</param>
+    /// <param name="cols">Number of columns in a 2D array.</param>
+    /// <param name="type">Array type. Use MatType.CV_8UC1, ..., CV_64FC4 to create 1-4 channel matrices, 
+    /// or MatType. CV_8UC(n), ..., CV_64FC(n) to create multi-channel matrices.</param>
+    /// <param name="data">Pointer to the user data. Matrix constructors that take data and step parameters do not allocate matrix data. 
+    /// Instead, they just initialize the matrix header that points to the specified data, which means that no data is copied. 
+    /// This operation is very efficient and can be used to process external data using OpenCV functions. 
+    /// The external data is not automatically de-allocated, so you should take care of it.</param>
+    /// <param name="step">Number of bytes each matrix row occupies. The value should include the padding bytes at the end of each row, if any.
+    /// If the parameter is missing (set to AUTO_STEP ), no padding is assumed and the actual step is calculated as cols*elemSize() .</param>
+    public static Mat FromPixelData(int rows, int cols, MatType type, IntPtr data, long step = 0)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_new8(rows, cols, type, data, new IntPtr(step), out var ptr));
+        return new Mat(ptr);
+    }
+
+    /// <summary>
+    /// Constructor for matrix headers pointing to user-allocated data.
+    /// **Do not use this constructor directly.** Please use <see cref="FromPixelData(int, int, MatType, IntPtr, long)"/> instead.
+    /// This constructor was removed from the public API because the introduction of <c>nint</c> in .NET caused overload resolution confusion.
+    /// </summary>
+    /// <param name="rows">Number of rows in a 2D array.</param>
+    /// <param name="cols">Number of columns in a 2D array.</param>
+    /// <param name="type">Array type. Use MatType.CV_8UC1, ..., CV_64FC4 to create 1-4 channel matrices, 
+    /// or MatType. CV_8UC(n), ..., CV_64FC(n) to create multi-channel matrices.</param>
+    /// <param name="data">Pointer to the user data. Matrix constructors that take data and step parameters do not allocate matrix data. 
+    /// Instead, they just initialize the matrix header that points to the specified data, which means that no data is copied. 
+    /// This operation is very efficient and can be used to process external data using OpenCV functions. 
+    /// The external data is not automatically de-allocated, so you should take care of it.</param>
+    /// <param name="step">Number of bytes each matrix row occupies. The value should include the padding bytes at the end of each row, if any.
+    /// If the parameter is missing (set to AUTO_STEP ), no padding is assumed and the actual step is calculated as cols*elemSize() .</param>
+    protected Mat(int rows, int cols, MatType type, Array data, long step = 0)
+    {
+        pinLifetime = new ArrayPinningLifetime(data);
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_new8(rows, cols, type,
+                pinLifetime.DataPtr, new IntPtr(step), out var p));
+        InitSafeHandle(p);
+    }
+
+    /// <summary>
+    /// Constructor for matrix headers pointing to user-allocated data.
+    /// </summary>
+    /// <param name="rows">Number of rows in a 2D array.</param>
+    /// <param name="cols">Number of columns in a 2D array.</param>
+    /// <param name="type">Array type. Use MatType.CV_8UC1, ..., CV_64FC4 to create 1-4 channel matrices, 
+    /// or MatType. CV_8UC(n), ..., CV_64FC(n) to create multi-channel matrices.</param>
+    /// <param name="data">Pointer to the user data. Matrix constructors that take data and step parameters do not allocate matrix data. 
+    /// Instead, they just initialize the matrix header that points to the specified data, which means that no data is copied. 
+    /// This operation is very efficient and can be used to process external data using OpenCV functions. 
+    /// The external data is not automatically de-allocated, so you should take care of it.</param>
+    /// <param name="step">Number of bytes each matrix row occupies. The value should include the padding bytes at the end of each row, if any.
+    /// If the parameter is missing (set to AUTO_STEP ), no padding is assumed and the actual step is calculated as cols*elemSize() .</param>
+    public static Mat FromPixelData(int rows, int cols, MatType type, Array data, long step = 0) 
+        => new (rows, cols, type, data, step);
+
+    /// <summary>
+    /// constructor for matrix headers pointing to user-allocated data
+    /// </summary>
+    /// <param name="sizes">Array of integers specifying an n-dimensional array shape.</param>
+    /// <param name="type">Array type. Use MatType.CV_8UC1, ..., CV_64FC4 to create 1-4 channel matrices, 
+    /// or MatType. CV_8UC(n), ..., CV_64FC(n) to create multi-channel matrices.</param>
+    /// <param name="data">Pointer to the user data. Matrix constructors that take data and step parameters do not allocate matrix data. 
+    /// Instead, they just initialize the matrix header that points to the specified data, which means that no data is copied. 
+    /// This operation is very efficient and can be used to process external data using OpenCV functions. 
+    /// The external data is not automatically de-allocated, so you should take care of it.</param>
+    /// <param name="steps">Array of ndims-1 steps in case of a multi-dimensional array (the last step is always set to the element size). 
+    /// If not specified, the matrix is assumed to be continuous.</param>
+    public static Mat FromPixelData(IEnumerable<int> sizes, MatType type, IntPtr data, IEnumerable<long>? steps = null)
+    {
+        if (sizes is null)
+            throw new ArgumentNullException(nameof(sizes));
+        if (data == IntPtr.Zero)
+            throw new ArgumentNullException(nameof(data));
+#pragma warning disable CA1508
+        var sizesArray = sizes as int[] ?? sizes.ToArray();
+#pragma warning restore CA1508
+
+        IntPtr ptr;
+        if (steps is null)
+        {
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_new9(sizesArray.Length, sizesArray, type, data, IntPtr.Zero, out ptr));
+        }
+        else
+        {
+            var stepsArray = steps.Select(s => new IntPtr(s)).ToArray();
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_new9(sizesArray.Length, sizesArray, type, data, stepsArray, out ptr));
+        }
+        return new Mat(ptr);
+    }
+
+    /// <summary>
+    /// constructor for matrix headers pointing to user-allocated data
+    /// </summary>
+    /// <param name="sizes">Array of integers specifying an n-dimensional array shape.</param>
+    /// <param name="type">Array type. Use MatType.CV_8UC1, ..., CV_64FC4 to create 1-4 channel matrices, 
+    /// or MatType. CV_8UC(n), ..., CV_64FC(n) to create multi-channel matrices.</param>
+    /// <param name="data">Pointer to the user data. Matrix constructors that take data and step parameters do not allocate matrix data. 
+    /// Instead, they just initialize the matrix header that points to the specified data, which means that no data is copied. 
+    /// This operation is very efficient and can be used to process external data using OpenCV functions. 
+    /// The external data is not automatically de-allocated, so you should take care of it.</param>
+    /// <param name="steps">Array of ndims-1 steps in case of a multi-dimensional array (the last step is always set to the element size). 
+    /// If not specified, the matrix is assumed to be continuous.</param>
+    protected Mat(IEnumerable<int> sizes, MatType type, Array data, IEnumerable<long>? steps = null)
+    {
+        if (sizes is null)
+            throw new ArgumentNullException(nameof(sizes));
+        if (data is null)
+            throw new ArgumentNullException(nameof(data));
+
+        pinLifetime = new ArrayPinningLifetime(data);
+#pragma warning disable CA1508
+        var sizesArray = sizes as int[] ?? sizes.ToArray();
+#pragma warning restore CA1508
+        IntPtr p;
+        if (steps is null)
+        {
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_new9(sizesArray.Length, sizesArray,
+                    type, pinLifetime.DataPtr, IntPtr.Zero, out p));
+        }
+        else
+        {
+            var stepsArray = steps.Select(s => new IntPtr(s)).ToArray();
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_new9(sizesArray.Length, sizesArray,
+                    type, pinLifetime.DataPtr, stepsArray, out p));
+        }
+        InitSafeHandle(p);
+    }
+
+    /// <summary>
+    /// constructor for matrix headers pointing to user-allocated data
+    /// </summary>
+    /// <param name="sizes">Array of integers specifying an n-dimensional array shape.</param>
+    /// <param name="type">Array type. Use MatType.CV_8UC1, ..., CV_64FC4 to create 1-4 channel matrices, 
+    /// or MatType. CV_8UC(n), ..., CV_64FC(n) to create multi-channel matrices.</param>
+    /// <param name="data">Pointer to the user data. Matrix constructors that take data and step parameters do not allocate matrix data. 
+    /// Instead, they just initialize the matrix header that points to the specified data, which means that no data is copied. 
+    /// This operation is very efficient and can be used to process external data using OpenCV functions. 
+    /// The external data is not automatically de-allocated, so you should take care of it.</param>
+    /// <param name="steps">Array of ndims-1 steps in case of a multi-dimensional array (the last step is always set to the element size). 
+    /// If not specified, the matrix is assumed to be continuous.</param>
+    public static Mat FromPixelData(IEnumerable<int> sizes, MatType type, Array data, IEnumerable<long>? steps = null) 
+        => new (sizes, type, data, steps);
+
+    /// <summary>
+    /// constructs n-dimensional matrix
+    /// </summary>
+    /// <param name="sizes">Array of integers specifying an n-dimensional array shape.</param>
+    /// <param name="type">Array type. Use MatType.CV_8UC1, ..., CV_64FC4 to create 1-4 channel matrices, 
+    /// or MatType. CV_8UC(n), ..., CV_64FC(n) to create multi-channel matrices.</param>
+    public Mat(IEnumerable<int> sizes, MatType type)
+    {
+        if (sizes is null)
+            throw new ArgumentNullException(nameof(sizes));
+
+#pragma warning disable CA1508
+        var sizesArray = sizes as int[] ?? sizes.ToArray();
+#pragma warning restore CA1508
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_new10(sizesArray.Length, sizesArray, type, out var p));
+        InitSafeHandle(p);
+    }
+
+    /// <summary>
+    /// constructs n-dimensional matrix
+    /// </summary>
+    /// <param name="sizes">Array of integers specifying an n-dimensional array shape.</param>
+    /// <param name="type">Array type. Use MatType.CV_8UC1, ..., CV_64FC4 to create 1-4 channel matrices, 
+    /// or MatType. CV_8UC(n), ..., CV_64FC(n) to create multi-channel matrices.</param>
+    /// <param name="s">An optional value to initialize each matrix element with. 
+    /// To set all the matrix elements to the particular value after the construction, use SetTo(Scalar s) method .</param>
+    public Mat(IEnumerable<int> sizes, MatType type, Scalar s)
+    {
+        if (sizes is null)
+            throw new ArgumentNullException(nameof(sizes));
+#pragma warning disable CA1508
+        var sizesArray = sizes as int[] ?? sizes.ToArray();
+#pragma warning restore CA1508
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_new11(sizesArray.Length, sizesArray, type, s, out var p));
+        InitSafeHandle(p);
+    }
+
+    /// <summary>
+    /// Constructs a matrix of the given shape (OpenCV 5). The shape may be N-D, a 0-D scalar or empty,
+    /// and can carry a data layout and channel count.
+    /// </summary>
+    /// <param name="shape">Matrix shape.</param>
+    /// <param name="type">Array type.</param>
+    public Mat(MatShape shape, MatType type)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_newFromMatShape(
+                shape.NativeDims, shape.NativeSizes, (int)shape.Layout, shape.Channels, type, out var p));
+        InitSafeHandle(p);
+    }
+
+    /// <summary>
+    /// Constructs a matrix of the given shape (OpenCV 5), initialized with the given value.
+    /// </summary>
+    /// <param name="shape">Matrix shape.</param>
+    /// <param name="type">Array type.</param>
+    /// <param name="s">Value to initialize each element with.</param>
+    public Mat(MatShape shape, MatType type, Scalar s)
+    {
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_newFromMatShapeScalar(
+                shape.NativeDims, shape.NativeSizes, (int)shape.Layout, shape.Channels, type, s, out var p));
+        InitSafeHandle(p);
+    }
+
+    /// <summary>
+    /// Releases the resources
+    /// </summary>
+    public void Release() => Dispose();
+
+    /// <summary>
+    /// Wraps a native cv::Mat* pointer in a SafeHandle.
+    /// </summary>
+    /// <param name="handle">Native cv::Mat* pointer.</param>
+    /// <param name="ownsHandle">
+    /// <c>true</c> (default) to delete the native Mat when this instance is disposed/finalized;
+    /// <c>false</c> for a borrowed view that must not be deleted (e.g. a sub-object owned by
+    /// another OpenCV object).
+    /// </param>
+    private void InitSafeHandle(IntPtr handle, bool ownsHandle = true)
+        => SetSafeHandle(new OpenCvPtrSafeHandle(
+            handle, ownsHandle, static h => { NativeMethods.core_Mat_delete(h); }));
+
+    #region Static Initializers
+
+    /// <summary>
+    /// Creates the Mat instance from System.IO.Stream
+    /// </summary>
+    /// <param name="stream"></param>
+    /// <param name="mode"></param>
+    /// <returns></returns>
+    public static Mat FromStream(Stream stream, ImreadModes mode)
+    {
+        if (stream is null)
+            throw new ArgumentNullException(nameof(stream));
+        if (stream.Length > int.MaxValue)
+            throw new ArgumentException("Not supported stream (too long)");
+
+        using var memoryStream = new MemoryStream();
+        stream.CopyTo(memoryStream);
+
+        return FromImageData(memoryStream.ToArray(), mode);
+    }
+
+    /// <summary>
+    /// Creates the Mat instance from image data (using cv::decode) 
+    /// </summary>
+    /// <param name="imageBytes"></param>
+    /// <param name="mode"></param>
+    /// <returns></returns>
+    public static Mat ImDecode(byte[] imageBytes, ImreadModes mode = ImreadModes.Color)
+    {
+        if (imageBytes is null)
+            throw new ArgumentNullException(nameof(imageBytes));
+        return Cv2.ImDecode(imageBytes, mode);
+    }
+
+    /// <summary>
+    /// Reads image from the specified buffer in memory.
+    /// </summary>
+    /// <param name="span">The input slice of bytes.</param>
+    /// <param name="mode">The same flags as in imread</param>
+    /// <returns></returns>
+    public static Mat ImDecode(ReadOnlySpan<byte> span, ImreadModes mode = ImreadModes.Color) 
+        => Cv2.ImDecode(span, mode);
+
+    /// <summary>
+    /// Creates the Mat instance from image data (using cv::decode) 
+    /// </summary>
+    /// <param name="imageBytes"></param>
+    /// <param name="mode"></param>
+    /// <returns></returns>
+    public static Mat FromImageData(byte[] imageBytes, ImreadModes mode = ImreadModes.Color) 
+        => ImDecode(imageBytes, mode);
+
+    /// <summary>
+    /// Reads image from the specified buffer in memory.
+    /// </summary>
+    /// <param name="span">The input slice of bytes.</param>
+    /// <param name="mode">The same flags as in imread</param>
+    /// <returns></returns>
+    public static Mat FromImageData(ReadOnlySpan<byte> span, ImreadModes mode = ImreadModes.Color) 
+        => Cv2.ImDecode(span, mode);
+
+    #endregion
+
+    #endregion
+
+    #region Static
+
+    /// <summary>
+    /// Extracts a diagonal from a matrix, or creates a diagonal matrix.
+    /// </summary>
+    /// <param name="d">One-dimensional matrix that represents the main diagonal.</param>
+    /// <returns></returns>
+    public static Mat Diag(Mat d)
+    {
+        if (d is null)            
+            throw new ArgumentNullException(nameof(d));            
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_diag_static(d.CvPtr, out var ret));
+        GC.KeepAlive(d);
+        var retVal = new Mat(ret);
+        return retVal;
+    }
+        
+    /// <summary>
+    /// Returns a zero array of the specified size and type.
+    /// </summary>
+    /// <param name="rows">Number of rows.</param>
+    /// <param name="cols">Number of columns.</param>
+    /// <param name="type">Created matrix type.</param>
+    /// <returns></returns>
+    public static MatExpr Zeros(int rows, int cols, MatType type)
+        => MatExpr.FromExpr(() =>
+        {
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_zeros1(rows, cols, type, out var ret));
+            return new NativeMatExpr(ret);
+        });
+
+    /// <summary>
+    /// Returns a zero array of the specified size and type.
+    /// </summary>
+    /// <param name="size">Alternative to the matrix size specification Size(cols, rows) .</param>
+    /// <param name="type">Created matrix type.</param>
+    /// <returns></returns>
+    public static MatExpr Zeros(Size size, MatType type)
+        => Zeros(size.Height, size.Width, type);
+
+    /// <summary>
+    /// Returns a zero array of the specified size and type.
+    /// </summary>
+    /// <param name="type">Created matrix type.</param>
+    /// <param name="sizes"></param>
+    /// <returns></returns>
+    public static MatExpr Zeros(MatType type, params int[] sizes)
+    {
+        if (sizes is null)
+            throw new ArgumentNullException(nameof(sizes));
+
+        return MatExpr.FromExpr(() =>
+        {
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_zeros2(sizes.Length, sizes, type, out var ret));
+            return new NativeMatExpr(ret);
+        });
+    }
+
+    /// <summary>
+    /// Returns a zero array of the specified shape and type (OpenCV 5, <see cref="MatShape"/>).
+    /// </summary>
+    /// <param name="shape">Created matrix shape.</param>
+    /// <param name="type">Created matrix type.</param>
+    public static MatExpr Zeros(MatShape shape, MatType type)
+        => MatExpr.FromExpr(() =>
+        {
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_zeros_MatShape(
+                    shape.NativeDims, shape.NativeSizes, (int)shape.Layout, shape.Channels, type, out var ret));
+            return new NativeMatExpr(ret);
+        });
+
+    /// <summary>
+    /// Returns an array of all 1’s of the specified size and type.
+    /// </summary>
+    /// <param name="rows">Number of rows.</param>
+    /// <param name="cols">Number of columns.</param>
+    /// <param name="type">Created matrix type.</param>
+    /// <returns></returns>
+    public static MatExpr Ones(int rows, int cols, MatType type)
+        => MatExpr.FromExpr(() =>
+        {
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_ones1(rows, cols, type, out var ret));
+            return new NativeMatExpr(ret);
+        });
+
+    /// <summary>
+    /// Returns an array of all 1’s of the specified size and type.
+    /// </summary>
+    /// <param name="size">Alternative to the matrix size specification Size(cols, rows) .</param>
+    /// <param name="type">Created matrix type.</param>
+    /// <returns></returns>
+    public static MatExpr Ones(Size size, MatType type)
+        => Ones(size.Height, size.Width, type);
+
+    /// <summary>
+    /// Returns an array of all 1’s of the specified size and type.
+    /// </summary>
+    /// <param name="type">Created matrix type.</param>
+    /// <param name="sizes">Array of integers specifying the array shape.</param>
+    /// <returns></returns>
+    public static MatExpr Ones(MatType type, params int[] sizes)
+    {
+        if (sizes is null)
+            throw new ArgumentNullException(nameof(sizes));
+
+        return MatExpr.FromExpr(() =>
+        {
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_ones2(sizes.Length, sizes, type, out var ret));
+            return new NativeMatExpr(ret);
+        });
+    }
+
+    /// <summary>
+    /// Returns an array of all 1's of the specified shape and type (OpenCV 5, <see cref="MatShape"/>).
+    /// </summary>
+    /// <param name="shape">Created matrix shape.</param>
+    /// <param name="type">Created matrix type.</param>
+    public static MatExpr Ones(MatShape shape, MatType type)
+        => MatExpr.FromExpr(() =>
+        {
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_ones_MatShape(
+                    shape.NativeDims, shape.NativeSizes, (int)shape.Layout, shape.Channels, type, out var ret));
+            return new NativeMatExpr(ret);
+        });
+
+    /// <summary>
+    /// Returns an identity matrix of the specified size and type.
+    /// </summary>
+    /// <param name="size">Alternative to the matrix size specification Size(cols, rows) .</param>
+    /// <param name="type">Created matrix type.</param>
+    /// <returns></returns>
+    public static MatExpr Eye(Size size, MatType type)
+        => Eye(size.Height, size.Width, type);
+
+    /// <summary>
+    /// Returns an identity matrix of the specified size and type.
+    /// </summary>
+    /// <param name="rows">Number of rows.</param>
+    /// <param name="cols">Number of columns.</param>
+    /// <param name="type">Created matrix type.</param>
+    /// <returns></returns>
+    public static MatExpr Eye(int rows, int cols, MatType type)
+        => MatExpr.FromExpr(() =>
+        {
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_eye(rows, cols, type, out var ret));
+            return new NativeMatExpr(ret);
+        });
+
+    /// <summary>
+    /// Returns a zero array of the specified size and type as <see cref="Mat"/>.
+    /// Unlike <see cref="Zeros(int,int,MatType)"/>, this method returns a <see cref="Mat"/> directly,
+    /// so a single <c>using</c> statement is sufficient to manage its lifetime.
+    /// </summary>
+    /// <param name="rows">Number of rows.</param>
+    /// <param name="cols">Number of columns.</param>
+    /// <param name="type">Created matrix type.</param>
+    /// <returns></returns>
+    public static Mat ZerosMat(int rows, int cols, MatType type)
+        => Zeros(rows, cols, type);
+
+    /// <summary>
+    /// Returns a zero array of the specified size and type as <see cref="Mat"/>.
+    /// Unlike <see cref="Zeros(Size,MatType)"/>, this method returns a <see cref="Mat"/> directly,
+    /// so a single <c>using</c> statement is sufficient to manage its lifetime.
+    /// </summary>
+    /// <param name="size">Alternative to the matrix size specification Size(cols, rows).</param>
+    /// <param name="type">Created matrix type.</param>
+    /// <returns></returns>
+    public static Mat ZerosMat(Size size, MatType type)
+        => ZerosMat(size.Height, size.Width, type);
+
+    /// <summary>
+    /// Returns an array of all 1's of the specified size and type as <see cref="Mat"/>.
+    /// Unlike <see cref="Ones(int,int,MatType)"/>, this method returns a <see cref="Mat"/> directly,
+    /// so a single <c>using</c> statement is sufficient to manage its lifetime.
+    /// </summary>
+    /// <param name="rows">Number of rows.</param>
+    /// <param name="cols">Number of columns.</param>
+    /// <param name="type">Created matrix type.</param>
+    /// <returns></returns>
+    public static Mat OnesMat(int rows, int cols, MatType type)
+        => Ones(rows, cols, type);
+
+    /// <summary>
+    /// Returns an array of all 1's of the specified size and type as <see cref="Mat"/>.
+    /// Unlike <see cref="Ones(Size,MatType)"/>, this method returns a <see cref="Mat"/> directly,
+    /// so a single <c>using</c> statement is sufficient to manage its lifetime.
+    /// </summary>
+    /// <param name="size">Alternative to the matrix size specification Size(cols, rows).</param>
+    /// <param name="type">Created matrix type.</param>
+    /// <returns></returns>
+    public static Mat OnesMat(Size size, MatType type)
+        => OnesMat(size.Height, size.Width, type);
+
+    /// <summary>
+    /// Returns an identity matrix of the specified size and type as <see cref="Mat"/>.
+    /// Unlike <see cref="Eye(int,int,MatType)"/>, this method returns a <see cref="Mat"/> directly,
+    /// so a single <c>using</c> statement is sufficient to manage its lifetime.
+    /// </summary>
+    /// <param name="rows">Number of rows.</param>
+    /// <param name="cols">Number of columns.</param>
+    /// <param name="type">Created matrix type.</param>
+    /// <returns></returns>
+    public static Mat EyeMat(int rows, int cols, MatType type)
+        => Eye(rows, cols, type);
+
+    /// <summary>
+    /// Returns an identity matrix of the specified size and type as <see cref="Mat"/>.
+    /// Unlike <see cref="Eye(Size,MatType)"/>, this method returns a <see cref="Mat"/> directly,
+    /// so a single <c>using</c> statement is sufficient to manage its lifetime.
+    /// </summary>
+    /// <param name="size">Alternative to the matrix size specification Size(cols, rows).</param>
+    /// <param name="type">Created matrix type.</param>
+    /// <returns></returns>
+    public static Mat EyeMat(Size size, MatType type)
+        => EyeMat(size.Height, size.Width, type);
+
+    #region FromArray
+
+    /// <summary>
+    /// Initializes as N x 1 matrix and copies array data to this
+    /// </summary>
+    /// <param name="arr">Source array data to be copied to this</param>
+    public static Mat<TElem> FromArray<TElem>(params TElem[] arr)
+        where TElem : unmanaged
+    {
+        if (arr is null)            
+            throw new ArgumentNullException(nameof(arr));
+        if (arr.Length == 0)
+            throw new ArgumentException("arr.Length == 0");
+
+        var numElems = arr.Length /* / ThisChannels*/;
+        var mat = new Mat<TElem>(numElems, 1);
+        if (!mat.SetArray(arr))
+            throw new OpenCvSharpException("Failed to copy pixel data into cv::Mat");
+        return mat;
+    }
+
+    /// <summary>
+    /// Initializes as M x N matrix and copies array data to this
+    /// </summary>
+    /// <param name="arr">Source array data to be copied to this</param>
+    public static Mat<TElem> FromArray<TElem>(TElem[,] arr)
+        where TElem : unmanaged
+    {
+        if (arr is null)
+            throw new ArgumentNullException(nameof(arr));
+        if (arr.Length == 0)
+            throw new ArgumentException("arr.Length == 0");
+
+        var rows = arr.GetLength(0);
+        var cols = arr.GetLength(1);
+        var mat = new Mat<TElem>(rows, cols);
+        if (!mat.SetRectangularArray(arr))
+            throw new OpenCvSharpException("Failed to copy pixel data into cv::Mat");
+        return mat;
+    }
+
+    /// <summary>
+    /// Initializes as N x 1 matrix and copies array data to this
+    /// </summary>
+    /// <param name="enumerable">Source array data to be copied to this</param>
+    public static Mat<TElem> FromArray<TElem>(IEnumerable<TElem> enumerable)
+        where TElem : unmanaged =>
+        FromArray(enumerable.ToArray());
+
+    #endregion
+
+    #endregion
+
+    #region Operators
+
+#pragma warning disable 1591
+
+    public static Mat operator +(Mat mat) => mat;
+
+    public MatExpr Plus() => MatExpr.From(this);
+
+    public static MatExpr operator -(Mat mat) => -MatExpr.From(mat);
+
+    public MatExpr Negate() => -this;
+
+    public static MatExpr operator +(Mat a, Mat b) => MatExpr.From(a) + MatExpr.From(b);
+    public static MatExpr operator +(Mat a, Scalar s) => MatExpr.From(a) + s;
+    public static MatExpr operator +(Scalar s, Mat a) => s + MatExpr.From(a);
+
+    public MatExpr Add(Mat m) => this + m;
+    public MatExpr Add(Scalar s) => this + s;
+
+    public static MatExpr operator -(Mat a, Mat b) => MatExpr.From(a) - MatExpr.From(b);
+    public static MatExpr operator -(Mat a, Scalar s) => MatExpr.From(a) - s;
+    public static MatExpr operator -(Scalar s, Mat a) => s - MatExpr.From(a);
+
+    public MatExpr Subtract(Mat m) => this - m;
+    public MatExpr Subtract(Scalar s) => this - s;
+
+    public static MatExpr operator *(Mat a, Mat b) => MatExpr.From(a) * MatExpr.From(b);
+    public static MatExpr operator *(Mat a, double s) => MatExpr.From(a) * s;
+    public static MatExpr operator *(double s, Mat a) => s * MatExpr.From(a);
+
+    public MatExpr Multiply(Mat m) => this * m;
+    public MatExpr Multiply(double s) => this * s;
+
+    public static MatExpr operator /(Mat a, Mat b) => MatExpr.From(a) / MatExpr.From(b);
+    public static MatExpr operator /(Mat a, double s) => MatExpr.From(a) / s;
+    public static MatExpr operator /(double s, Mat a) => s / MatExpr.From(a);
+
+    public MatExpr Divide(Mat m) => this / m;
+    public MatExpr Divide(double s) => this / s;
+
+    public static MatExpr operator &(Mat a, Mat b) => MatExpr.From(a) & MatExpr.From(b);
+    public static MatExpr operator &(Mat a, double s) => MatExpr.From(a) & s;
+    public static MatExpr operator &(double s, Mat a) => s & MatExpr.From(a);
+
+    public MatExpr BitwiseAnd(Mat m) => this & m;
+    public MatExpr BitwiseAnd(double s) => this & s;
+
+    public static MatExpr operator |(Mat a, Mat b) => MatExpr.From(a) | MatExpr.From(b);
+    public static MatExpr operator |(Mat a, double s) => MatExpr.From(a) | s;
+    public static MatExpr operator |(double s, Mat a) => s | MatExpr.From(a);
+
+    public MatExpr BitwiseOr(Mat m) => this | m;
+    public MatExpr BitwiseOr(double s) => this | s;
+
+    public static MatExpr operator ^(Mat a, Mat b) => MatExpr.From(a) ^ MatExpr.From(b);
+    public static MatExpr operator ^(Mat a, double s) => MatExpr.From(a) ^ s;
+    public static MatExpr operator ^(double s, Mat a) => s ^ MatExpr.From(a);
+
+    public MatExpr Xor(Mat m) => this ^ m;
+    public MatExpr Xor(double s) => this ^ s;
+
+    public static MatExpr operator ~(Mat m) => ~MatExpr.From(m);
+
+    public MatExpr OnesComplement() => ~this;
+
+#pragma warning restore 1591
+    #endregion
+
+    #region Comparison
+
+    /// <summary>
+    /// operator &lt;
+    /// </summary>
+    public MatExpr LessThan(Mat m) => MatExpr.From(this).LessThan(m);
+
+    /// <summary>
+    /// operator &lt;
+    /// </summary>
+    public MatExpr LessThan(double d) => MatExpr.From(this).LessThan(d);
+
+    /// <summary>
+    /// operator &lt;=
+    /// </summary>
+    public MatExpr LessThanOrEqual(Mat m) => MatExpr.From(this).LessThanOrEqual(m);
+
+    /// <summary>
+    /// operator &lt;=
+    /// </summary>
+    public MatExpr LessThanOrEqual(double d) => MatExpr.From(this).LessThanOrEqual(d);
+
+    /// <summary>
+    /// operator ==
+    /// </summary>
+    public MatExpr Equals(Mat m) => MatExpr.From(this).Equal(m);
+
+    /// <summary>
+    /// operator ==
+    /// </summary>
+    public MatExpr Equals(double d) => MatExpr.From(this).Equal(d);
+
+    /// <summary>
+    /// operator !=
+    /// </summary>
+    public MatExpr NotEquals(Mat m) => MatExpr.From(this).NotEqual(m);
+
+    /// <summary>
+    /// operator !=
+    /// </summary>
+    public MatExpr NotEquals(double d) => MatExpr.From(this).NotEqual(d);
+
+    /// <summary>
+    /// operator &gt;
+    /// </summary>
+    public MatExpr GreaterThan(Mat m) => MatExpr.From(this).GreaterThan(m);
+
+    /// <summary>
+    /// operator &gt;
+    /// </summary>
+    public MatExpr GreaterThan(double d) => MatExpr.From(this).GreaterThan(d);
+
+    /// <summary>
+    /// operator &gt;=
+    /// </summary>
+    public MatExpr GreaterThanOrEqual(Mat m) => MatExpr.From(this).GreaterThanOrEqual(m);
+
+    /// <summary>
+    /// operator &gt;=
+    /// </summary>
+    public MatExpr GreaterThanOrEqual(double d) => MatExpr.From(this).GreaterThanOrEqual(d);
+
+    #endregion
+
+    #region Public Methods
+
+    #region Mat Indexers
+
+    /// <summary>
+    /// Extracts a rectangular submatrix.
+    /// </summary>
+    /// <param name="rowStart">Start row of the extracted submatrix. The upper boundary is not included.</param>
+    /// <param name="rowEnd">End row of the extracted submatrix. The upper boundary is not included.</param>
+    /// <param name="colStart">Start column of the extracted submatrix. The upper boundary is not included.</param>
+    /// <param name="colEnd">End column of the extracted submatrix. The upper boundary is not included.</param>
+    /// <returns></returns>
+    public Mat this[int rowStart, int rowEnd, int colStart, int colEnd]
+    {
+        get => SubMat(rowStart, rowEnd, colStart, colEnd);
+        set
+        {
+            if (value is null)
+                throw new ArgumentNullException(nameof(value));
+            value.ThrowIfDisposed();
+            //if (Type() != value.Type())
+            //    throw new ArgumentException("Mat type mismatch");
+            if (Dims != value.Dims)
+                throw new ArgumentException("Dimension mismatch");
+
+            using var sub = SubMat(rowStart, rowEnd, colStart, colEnd);
+            if (sub.Size() != value.Size())
+                throw new ArgumentException("Specified ROI != mat.Size()");
+            value.CopyTo(sub);
+        }
+    }
+
+    /// <summary>
+    /// Extracts a rectangular submatrix.
+    /// </summary>
+    /// <param name="rowRange">Start and end row of the extracted submatrix. The upper boundary is not included.
+    /// To select all the rows, use Range.All().</param>
+    /// <param name="colRange">Start and end column of the extracted submatrix.
+    /// The upper boundary is not included. To select all the columns, use Range.All().</param>
+    /// <returns></returns>
+    public Mat this[System.Range rowRange, System.Range colRange]
+    {
+        get => SubMat(rowRange, colRange);
+        set
+        {
+            if (value is null)
+                throw new ArgumentNullException(nameof(value));
+            value.ThrowIfDisposed();
+            //if (Type() != value.Type())
+            //    throw new ArgumentException("Mat type mismatch");
+            if (Dims != value.Dims)
+                throw new ArgumentException("Dimension mismatch");
+
+            using var sub = SubMat(rowRange, colRange);
+            if (sub.Size() != value.Size())
+                throw new ArgumentException("Specified ROI != mat.Size()");
+            value.CopyTo(sub);
+        }
+    }
+
+    /// <summary>
+    /// Extracts a rectangular submatrix.
+    /// </summary>
+    /// <param name="rowRange">Start and end row of the extracted submatrix. The upper boundary is not included. 
+    /// To select all the rows, use Range.All().</param>
+    /// <param name="colRange">Start and end column of the extracted submatrix. 
+    /// The upper boundary is not included. To select all the columns, use Range.All().</param>
+    /// <returns></returns>
+    public Mat this[Range rowRange, Range colRange]
+    {
+        get => SubMat(rowRange, colRange);
+        set
+        {
+            if (value is null)
+                throw new ArgumentNullException(nameof(value));
+            value.ThrowIfDisposed();
+            //if (Type() != value.Type())
+            //    throw new ArgumentException("Mat type mismatch");
+            if (Dims != value.Dims)
+                throw new ArgumentException("Dimension mismatch");
+
+            using var sub = SubMat(rowRange, colRange);
+            if (sub.Size() != value.Size())
+                throw new ArgumentException("Specified ROI != mat.Size()");
+            value.CopyTo(sub);
+        }
+    }
+
+    /// <summary>
+    /// Extracts a rectangular submatrix.
+    /// </summary>
+    /// <param name="roi">Extracted submatrix specified as a rectangle.</param>
+    /// <returns></returns>
+    [SuppressMessage("Microsoft.Design", "CA1043: Use integral or string argument for indexers")]
+    public Mat this[Rect roi]
+    {
+        get => SubMat(roi);
+        set
+        {
+            if (value is null)
+                throw new ArgumentNullException(nameof(value));
+            value.ThrowIfDisposed();
+            //if (Type() != value.Type())
+            //    throw new ArgumentException("Mat type mismatch");
+            if (Dims != value.Dims)
+                throw new ArgumentException("Dimension mismatch");
+
+            if (roi.Size != value.Size())
+                throw new ArgumentException("Specified ROI != mat.Size()");
+            using var sub = SubMat(roi);
+            value.CopyTo(sub);
+        }
+    }
+
+    /// <summary>
+    /// Extracts a rectangular submatrix.
+    /// </summary>
+    /// <param name="ranges">Array of selected ranges along each array dimension.</param>
+    /// <returns></returns>
+    [SuppressMessage("Microsoft.Design", "CA1043: Use integral or string argument for indexers")]
+    public Mat this[params Range[] ranges]
+    {
+        get => SubMat(ranges);
+        set
+        {
+            if (value is null)
+                throw new ArgumentNullException(nameof(value));
+            value.ThrowIfDisposed();
+            //if (Type() != value.Type())
+            //    throw new ArgumentException("Mat type mismatch");
+
+            using var sub = SubMat(ranges);
+
+            var dims = Dims;
+            if (dims != value.Dims)
+                throw new ArgumentException("Dimension mismatch");
+            for (var i = 0; i < dims; i++)
+            {
+                if (sub.Size(i) != value.Size(i))
+                    throw new ArgumentException("Size mismatch at dimension " + i);
+            }
+
+            value.CopyTo(sub);
+        }
+    }
+
+    #endregion
+
+    /// <summary>
+    /// Retrieve UMat from Mat
+    /// </summary>
+    /// <param name="accessFlags"></param>
+    /// <param name="usageFlags"></param>
+    /// <returns></returns>
+    public UMat GetUMat(AccessFlag accessFlags, UMatUsageFlags usageFlags)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_getUMat(Handle, (int)accessFlags, (int)usageFlags, out var matPtr));
+        return new UMat(matPtr);
+    }
+
+    /// <summary>
+    /// Creates a matrix header for the specified matrix column.
+    /// </summary>
+    /// <param name="x">A 0-based column index.</param>
+    /// <returns></returns>
+    public Mat Col(int x)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_col(Handle, x, out var matPtr));
+        return new Mat(matPtr);
+    }
+
+    /// <summary>
+    /// Creates a matrix header for the specified column span.
+    /// </summary>
+    /// <param name="startCol">An inclusive 0-based start index of the column span.</param>
+    /// <param name="endCol"> An exclusive 0-based ending index of the column span.</param>
+    /// <returns></returns>
+    public Mat ColRange(int startCol, int endCol)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_colRange(Handle, startCol, endCol, out var matPtr));
+        return new Mat(matPtr);
+    }
+
+    /// <summary>
+    /// Creates a matrix header for the specified column span.
+    /// </summary>
+    /// <param name="range"></param>
+    /// <returns></returns>
+    public Mat ColRange(Range range) 
+        => ColRange(range.Start, range.End);
+
+    /// <summary>
+    /// Creates a matrix header for the specified column span.
+    /// </summary>
+    /// <param name="range"></param>
+    /// <returns></returns>
+    public Mat ColRange(System.Range range)
+    {
+        var (colStart, colLength) = range.GetOffsetAndLength(Cols);
+        return ColRange(colStart, colStart + colLength);
+    }
+
+    /// <summary>
+    /// Creates a matrix header for the specified matrix row.
+    /// </summary>
+    /// <param name="y">A 0-based row index.</param>
+    /// <returns></returns>
+    public Mat Row(int y)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_row(Handle, y, out var matPtr));
+        return new Mat(matPtr);
+    }
+
+    /// <summary>
+    /// Creates a matrix header for the specified row span.
+    /// </summary>
+    /// <param name="startRow"></param>
+    /// <param name="endRow"></param>
+    /// <returns></returns>
+    public Mat RowRange(int startRow, int endRow)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_rowRange(Handle, startRow, endRow, out var matPtr));
+        return new Mat(matPtr);
+    }
+
+    /// <summary>
+    ///  Creates a matrix header for the specified row span.
+    /// </summary>
+    /// <param name="range"></param>
+    /// <returns></returns>
+    public Mat RowRange(Range range) 
+        => RowRange(range.Start, range.End);
+
+    /// <summary>
+    ///  Creates a matrix header for the specified row span.
+    /// </summary>
+    /// <param name="range"></param>
+    /// <returns></returns>
+    public Mat RowRange(System.Range range)
+    {
+        var (rowStart, rowLength) = range.GetOffsetAndLength(Rows);
+        return RowRange(rowStart, rowStart + rowLength);
+    }
+
+    /// <summary>
+    /// Single-column matrix that forms a diagonal matrix or index of the diagonal, with the following values:
+    /// </summary>
+    /// <param name="d">Single-column matrix that forms a diagonal matrix or index of the diagonal, with the following values:</param>
+    /// <returns></returns>
+    public Mat Diag(MatDiagType d = MatDiagType.Main)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_diag(Handle, (int)d, out var ret));
+        var retVal = new Mat(ret);
+        return retVal;
+    }
+
+    /// <summary>
+    /// Creates a full copy of the matrix.
+    /// </summary>
+    /// <returns></returns>
+    public Mat Clone()
+    {
+        ThrowIfDisposed();
+            
+        if (Empty())            
+            return new Mat(Size(), Type());     
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_clone(Handle, out var ret));
+        var retVal = new Mat(ret);
+        return retVal;
+    }
+
+    /// <summary>
+    /// Returns the partial Mat of the specified Mat
+    /// </summary>
+    /// <param name="roi"></param>
+    /// <returns></returns>
+    public Mat Clone(Rect roi)
+    {
+        using var part = new Mat(this, roi);
+        return part.Clone();
+    }
+
+    /// <summary>
+    /// Copies the matrix to another one.
+    /// </summary>
+    /// <param name="m">Destination matrix. If it does not have a proper size or type before the operation, it is reallocated.</param>
+    /// <param name="mask">Operation mask. Its non-zero elements indicate which matrix elements need to be copied.</param>
+    public void CopyTo(OutputArray m, InputArray mask = default)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_copyTo2(Handle, m.Proxy, mask.Proxy));
+
+        GC.KeepAlive(m.Source);
+        GC.KeepAlive(mask.Source);
+    }
+
+    /// <summary>
+    /// Copies the matrix to another one.
+    /// </summary>
+    /// <param name="m">Destination matrix. If it does not have a proper size or type before the operation, it is reallocated.</param>
+    /// <param name="mask">Operation mask. Its non-zero elements indicate which matrix elements need to be copied.</param>
+    public void CopyTo(Mat m, InputArray mask = default)
+    {
+        ThrowIfDisposed();
+        if (m is null)
+            throw new ArgumentNullException(nameof(m));
+        m.ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_copyTo_toMat2(Handle, m.CvPtr, mask.Proxy));
+
+        GC.KeepAlive(m);
+        GC.KeepAlive(mask.Source);
+    }
+
+    /// <summary>
+    /// Converts an array to another data type with optional scaling.
+    /// </summary>
+    /// <param name="m">output matrix; if it does not have a proper size or type before the operation, it is reallocated.</param>
+    /// <param name="rtype">desired output matrix type or, rather, the depth since the number of channels are the same as the input has; 
+    /// if rtype is negative, the output matrix will have the same type as the input.</param>
+    /// <param name="alpha">optional scale factor.</param>
+    /// <param name="beta">optional delta added to the scaled values.</param>
+    public void ConvertTo(OutputArray m, MatType rtype, double alpha = 1, double beta = 0)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_convertTo(Handle, m.Proxy, rtype, alpha, beta));
+
+        GC.KeepAlive(m.Source);
+    }
+        
+    /// <summary>
+    /// Provides a functional form of convertTo.
+    /// </summary>
+    /// <param name="m">Destination array.</param>
+    /// <param name="type">Desired destination array depth (or -1 if it should be the same as the source type).</param>
+    public void AssignTo(Mat m, MatType? type = null)
+    {
+        ThrowIfDisposed();
+        if (m is null)
+            throw new ArgumentNullException(nameof(m));
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_assignTo(Handle, m.CvPtr, type?.Value ?? -1));
+
+        GC.KeepAlive(m);
+    }
+        
+    /// <summary>
+    /// Sets all or some of the array elements to the specified value.
+    /// </summary>
+    /// <param name="value"></param>
+    /// <param name="mask"></param>
+    /// <returns></returns>
+    public Mat SetTo(Scalar value, Mat? mask = null)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_setTo_Scalar(Handle, value, mask?.Handle ?? OpenCvSafeHandle.Null));
+
+        return this;
+    }
+
+    /// <summary>
+    /// Sets all or some of the array elements to the specified value.
+    /// </summary>
+    /// <param name="value"></param>
+    /// <param name="mask"></param>
+    /// <returns></returns>
+    public Mat SetTo(InputArray value, Mat? mask = null)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_setTo_InputArray(Handle, value.Proxy, mask?.Handle ?? OpenCvSafeHandle.Null));
+
+        GC.KeepAlive(value.Source);
+        return this;
+    }
+        
+    /// <summary>
+    /// Changes the shape and/or the number of channels of a 2D matrix without copying the data.
+    /// </summary>
+    /// <param name="cn">New number of channels. If the parameter is 0, the number of channels remains the same.</param>
+    /// <param name="rows">New number of rows. If the parameter is 0, the number of rows remains the same.</param>
+    /// <returns></returns>
+    public Mat Reshape(int cn, int rows = 0)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_reshape1(Handle, cn, rows, out var ret));
+
+        var retVal = new Mat(ret);
+        return retVal;
+    }
+
+    /// <summary>
+    /// Changes the shape and/or the number of channels of a 2D matrix without copying the data.
+    /// </summary>
+    /// <param name="cn">New number of channels. If the parameter is 0, the number of channels remains the same.</param>
+    /// <param name="newDims">New number of rows. If the parameter is 0, the number of rows remains the same.</param>
+    /// <returns></returns>
+    public Mat Reshape(int cn, params int[] newDims)
+    {
+        if (newDims is null)
+            throw new ArgumentNullException(nameof(newDims));
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_reshape2(Handle, cn, newDims.Length, newDims, out var ret));
+
+        var retVal = new Mat(ret);
+        return retVal;
+    }
+
+    /// <summary>
+    /// Changes the shape (and optionally the number of channels) of the matrix without copying the data,
+    /// using a <see cref="MatShape"/> (OpenCV 5).
+    /// </summary>
+    /// <param name="cn">New number of channels. If 0, the number of channels remains the same.</param>
+    /// <param name="newShape">New shape.</param>
+    public Mat Reshape(int cn, MatShape newShape)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_reshapeMatShape(
+                Handle, cn, newShape.NativeDims, newShape.NativeSizes, (int)newShape.Layout, newShape.Channels, out var ret));
+
+        return new Mat(ret);
+    }
+
+    /// <summary>
+    /// Transposes a matrix.
+    /// </summary>
+    /// <returns></returns>
+    public MatExpr T() => MatExpr.From(this).T();
+
+    /// <summary>
+    /// Inverses a matrix.
+    /// </summary>
+    /// <param name="method">Matrix inversion method</param>
+    /// <returns></returns>
+    public MatExpr Inv(DecompTypes method = DecompTypes.LU) => MatExpr.From(this).Inv(method);
+
+    /// <summary>
+    /// Performs an element-wise multiplication or division of the two matrices.
+    /// </summary>
+    /// <param name="m"></param>
+    /// <param name="scale"></param>
+    /// <returns></returns>
+    public MatExpr Mul(InputArray m, double scale = 1)
+    {
+        // MatExpr.FromExpr defers evaluation via a captured delegate, and ref structs cannot be
+        // captured by a closure — so the proxy and its keepalive source are captured by value instead.
+        var proxy = m.Proxy;
+        var source = m.Source;
+
+        return MatExpr.FromExpr(() =>
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_mul(Handle, proxy, scale, out var ret));
+            GC.KeepAlive(source);
+            return new NativeMatExpr(ret);
+        });
+    }
+
+    /// <summary>
+    /// Computes a cross-product of two 3-element vectors.
+    /// </summary>
+    /// <param name="m">Another cross-product operand.</param>
+    /// <returns></returns>
+    public Mat Cross(InputArray m)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_cross(Handle, m.Proxy, out var ret));
+
+        GC.KeepAlive(m.Source);
+        var retVal = new Mat(ret);
+        return retVal;
+    }
+        
+    /// <summary>
+    /// Computes a dot-product of two vectors.
+    /// </summary>
+    /// <param name="m">another dot-product operand.</param>
+    /// <returns></returns>
+    public double Dot(InputArray m)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_dot(Handle, m.Proxy, out var ret));
+
+        GC.KeepAlive(m.Source);
+        return ret;
+    }
+        
+    /// <summary>
+    /// Allocates new array data if needed.
+    /// </summary>
+    /// <param name="rows">New number of rows.</param>
+    /// <param name="cols">New number of columns.</param>
+    /// <param name="type">New matrix type.</param>
+    public void Create(int rows, int cols, MatType type)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_create1(Handle, rows, cols, type));
+    }
+
+    /// <summary>
+    /// Allocates new array data if needed.
+    /// </summary>
+    /// <param name="size">Alternative new matrix size specification: Size(cols, rows)</param>
+    /// <param name="type">New matrix type.</param>
+    public void Create(Size size, MatType type) 
+        => Create(size.Height, size.Width, type);
+
+    /// <summary>
+    /// Allocates new array data if needed.
+    /// </summary>
+    /// <param name="sizes">Array of integers specifying a new array shape.</param>
+    /// <param name="type">New matrix type.</param>
+    public void Create(MatType type, params int[] sizes)
+    {
+        if (sizes is null)
+            throw new ArgumentNullException(nameof(sizes));
+        if (sizes.Length < 2)
+            throw new ArgumentException("sizes.Length < 2");
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_create2(Handle, sizes.Length, sizes, type));
+    }
+        
+    /// <summary>
+    /// Reserves space for the certain number of rows.
+    ///
+    /// The method reserves space for sz rows. If the matrix already has enough space to store sz rows,
+    /// nothing happens. If the matrix is reallocated, the first Mat::rows rows are preserved. The method
+    /// emulates the corresponding method of the STL vector class.
+    /// </summary>
+    /// <param name="sz">Number of rows.</param>
+    public void Reserve(int sz)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_reserve(Handle, new IntPtr(sz)));
+    }
+
+    /// <summary>
+    /// Reserves space for the certain number of bytes.
+    ///
+    /// The method reserves space for sz bytes. If the matrix already has enough space to store sz bytes,
+    /// nothing happens. If matrix has to be reallocated its previous content could be lost.
+    /// </summary>
+    /// <param name="sz">Number of bytes.</param>
+    public void ReserveBuffer(int sz)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_reserveBuffer(Handle, new IntPtr(sz)));
+    }
+        
+    /// <summary>
+    /// Changes the number of matrix rows.
+    /// </summary>
+    /// <param name="sz">New number of rows.</param>
+    public void Resize(int sz)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_resize1(Handle, new IntPtr(sz)));
+    }
+
+    /// <summary>
+    /// Changes the number of matrix rows.
+    /// </summary>
+    /// <param name="sz">New number of rows.</param>
+    /// <param name="s">Value assigned to the newly added elements.</param>
+    public void Resize(int sz, Scalar s)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_resize2(Handle, new IntPtr(sz), s));
+    }
+        
+    /// <summary>
+    /// removes several hyper-planes from bottom of the matrix (Mat.pop_back)
+    /// </summary>
+    /// <param name="nElems"></param>
+    public void PopBack(int nElems = 1)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_pop_back(Handle, new IntPtr(nElems)));
+    }
+        
+    #region PushBack
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(byte value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_uchar(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(sbyte value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_char(Handle, value));
+    }
+
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(ushort value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_ushort(Handle, value));
+    }
+
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(short value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_short(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(int value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_int(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(float value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_float(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(double value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_double(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec2b value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec2b(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec3b value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec3b(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec4b value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec4b(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec6b value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec6b(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec2w value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec2w(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec3w value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec3w(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec4w value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec4w(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec6w value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec6w(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec2s value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec2s(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec3s value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec3s(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec4s value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec4s(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec6s value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec6s(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec2i value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec2i(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec3i value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec3i(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec4i value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec4i(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec6i value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec6i(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec2f value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec2f(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec3f value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec3f(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec4f value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec4f(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec6f value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec6f(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec2d value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec2d(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec3d value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec3d(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec4d value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec4d(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Vec6d value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Vec6d(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Point value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Point(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Point2d value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Point2d(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Point2f value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Point2f(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Point3i value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Point3i(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Point3d value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Point3d(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Point3f value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Point3f(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Size value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Size(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Size2d value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Size2d(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Size2f value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Size2f(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Rect value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Rect(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Rect2d value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Rect2d(Handle, value));
+    }
+        
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat::push_back)
+    /// </summary>
+    /// <param name="value">Added element</param>
+    public void PushBack(Rect2f value)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(NativeMethods.core_Mat_push_back_Rect2f(Handle, value));
+    }
+
+    /// <summary>
+    /// Adds elements to the bottom of the matrix. (Mat.push_back)
+    /// </summary>
+    /// <param name="m">Added line(s)</param>
+    public void PushBack(Mat m)
+    {
+        ThrowIfDisposed();
+        if (m is null)
+            throw new ArgumentNullException(nameof(m));
+        m.ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_push_back_Mat(Handle, m.CvPtr));
+        GC.KeepAlive(m);
+    }
+        
+    #endregion
+
+    /// <summary>
+    /// Locates the matrix header within a parent matrix.
+    /// </summary>
+    /// <param name="wholeSize">Output parameter that contains the size of the whole matrix containing *this as a part.</param>
+    /// <param name="ofs">Output parameter that contains an offset of *this inside the whole matrix.</param>
+    // ReSharper disable once InconsistentNaming
+    public void LocateROI(out Size wholeSize, out Point ofs)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_locateROI(Handle, out wholeSize, out ofs));
+    }
+
+    /// <summary>
+    /// Adjusts a submatrix size and position within the parent matrix.
+    /// </summary>
+    /// <param name="dtop">Shift of the top submatrix boundary upwards.</param>
+    /// <param name="dbottom">Shift of the bottom submatrix boundary downwards.</param>
+    /// <param name="dleft">Shift of the left submatrix boundary to the left.</param>
+    /// <param name="dright">Shift of the right submatrix boundary to the right.</param>
+    /// <returns></returns>
+    // ReSharper disable once InconsistentNaming
+    public Mat AdjustROI(int dtop, int dbottom, int dleft, int dright)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_adjustROI(Handle, dtop, dbottom, dleft, dright, out var ret));
+        var retVal = new Mat(ret);
+        return retVal;
+    }
+        
+    /// <summary>
+    /// Extracts a rectangular submatrix.
+    /// </summary>
+    /// <param name="rowStart"></param>
+    /// <param name="rowEnd"></param>
+    /// <param name="colStart"></param>
+    /// <param name="colEnd"></param>
+    /// <returns></returns>
+    public Mat SubMat(int rowStart, int rowEnd, int colStart, int colEnd)
+    {
+        if (rowStart >= rowEnd)
+            throw new ArgumentException("rowStart >= rowEnd");
+        if (colStart >= colEnd)
+            throw new ArgumentException("colStart >= colEnd");
+
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_subMat1(Handle, rowStart, rowEnd, colStart, colEnd, out var ret));
+        var retVal = new Mat(ret);
+
+        // If this is a managed array, keep the array pinned as long as the Mat is alive
+        retVal.pinLifetime = pinLifetime?.Ref();
+        return retVal;
+    }
+
+    /// <summary>
+    /// Extracts a rectangular submatrix.
+    /// </summary>
+    /// <param name="rowRange">Start and end row of the extracted submatrix. The upper boundary is not included.
+    /// To select all the rows, use Range::all().</param>
+    /// <param name="colRange">Start and end column of the extracted submatrix. The upper boundary is not included.
+    /// To select all the columns, use Range::all().</param>
+    /// <returns></returns>
+    public Mat SubMat(Range rowRange, Range colRange) 
+        => SubMat(rowRange.Start, rowRange.End, colRange.Start, colRange.End);
+
+    /// <summary>
+    /// Extracts a rectangular submatrix.
+    /// </summary>
+    /// <param name="rowRange">Start and end row of the extracted submatrix. The upper boundary is not included.
+    /// To select all the rows, use Range::all().</param>
+    /// <param name="colRange">Start and end column of the extracted submatrix. The upper boundary is not included.
+    /// To select all the columns, use Range::all().</param>
+    /// <returns></returns>
+    public Mat SubMat(System.Range rowRange, System.Range colRange)
+    {
+        var (rowStart, rowLength) = rowRange.GetOffsetAndLength(Rows);
+        var (colStart, colLength) = colRange.GetOffsetAndLength(Cols);
+        return SubMat(rowStart, rowStart + rowLength, colStart, colStart + colLength);
+    }
+
+    /// <summary>
+    /// Extracts a rectangular submatrix.
+    /// </summary>
+    /// <param name="roi">Extracted submatrix specified as a rectangle.</param>
+    /// <returns></returns>
+    public Mat SubMat(Rect roi) 
+        => SubMat(roi.Y, roi.Y + roi.Height, roi.X, roi.X + roi.Width);
+
+    /// <summary>
+    /// Extracts a rectangular submatrix.
+    /// </summary>
+    /// <param name="ranges">Array of selected ranges along each array dimension.</param>
+    /// <returns></returns>
+    public Mat SubMat(params Range[] ranges)
+    {
+        if (ranges is null)
+            throw new ArgumentNullException(nameof(ranges));
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_subMat2(Handle, ranges.Length, ranges, out var ret));
+        var retVal = new Mat(ret);
+        return retVal;
+    }
+
+    /// <summary>
+    /// Reports whether the matrix is continuous or not.
+    /// </summary>
+    /// <returns></returns>
+    public bool IsContinuous()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_isContinuous(Handle, out var ret));
+        return ret != 0;
+    }
+        
+    /// <summary>
+    /// Returns whether this matrix is a part of other matrix or not.
+    /// </summary>
+    /// <returns></returns>
+    public bool IsSubmatrix()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_isSubmatrix(Handle, out var ret));
+        return ret != 0;
+    }
+
+    /// <summary>
+    /// Returns the matrix element size in bytes.
+    /// </summary>
+    /// <returns></returns>
+    public int ElemSize()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_elemSize(Handle, out var ret));
+        return ret.ToInt32();
+    }
+
+    /// <summary>
+    /// Returns the size of each matrix element channel in bytes.
+    /// </summary>
+    /// <returns></returns>
+    public int ElemSize1()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_elemSize1(Handle, out var ret));
+        return ret.ToInt32();
+    }
+        
+    /// <summary>
+    /// Returns the type of a matrix element.
+    /// </summary>
+    /// <returns></returns>
+    public MatType Type()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_type(Handle, out var ret));
+        return ret;
+    }
+
+    /// <summary>
+    /// Returns the depth of a matrix element.
+    /// </summary>
+    /// <returns></returns>
+    public int Depth()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_depth(Handle, out var ret));
+        return ret;
+    }
+
+    /// <summary>
+    /// Returns the number of matrix channels.
+    /// </summary>
+    /// <returns></returns>
+    public int Channels()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_channels(Handle, out var ret));
+        return ret;
+    }
+        
+    /// <summary>
+    /// Returns a normalized step.
+    /// </summary>
+    /// <param name="i"></param>
+    /// <returns></returns>
+    public long Step1(int i = 0)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_step1(Handle, i, out var ret));
+        return ret.ToInt64();
+    }
+        
+    /// <summary>
+    /// Returns true if the array has no elements.
+    /// </summary>
+    /// <returns></returns>
+    public bool Empty()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_empty(Handle, out var ret));
+        return ret != 0;
+    }
+        
+    /// <summary>
+    /// Returns the total number of array elements.
+    /// </summary>
+    /// <returns></returns>
+    public long Total()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_total1(Handle, out var ret));
+        return ret.ToInt64();
+    }
+
+    /// <summary>
+    /// Returns the total number of array elements.
+    /// The method returns the number of elements within a certain sub-array slice with startDim &lt;= dim &lt; endDim
+    /// </summary>
+    /// <param name="startDim"></param>
+    /// <param name="endDim"></param>
+    /// <returns></returns>
+    public long Total(int startDim, int endDim = int.MaxValue)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_total2(Handle, startDim, endDim, out var ret));
+        return ret.ToInt64();
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="elemChannels">Number of channels or number of columns the matrix should have.
+    /// For a 2-D matrix, when the matrix has only 1 column, then it should have
+    /// elemChannels channels; When the matrix has only 1 channel,
+    /// then it should have elemChannels columns. For a 3-D matrix, it should have only one channel.
+    /// Furthermore, if the number of planes is not one, then the number of rows within every
+    /// plane has to be 1; if the number of rows within every plane is not 1,
+    /// then the number of planes has to be 1.</param>
+    /// <param name="depth">The depth the matrix should have. Set it to -1 when any depth is fine.</param>
+    /// <param name="requireContinuous">Set it to true to require the matrix to be continuous</param>
+    /// <returns>-1 if the requirement is not satisfied.
+    /// Otherwise, it returns the number of elements in the matrix. Note that an element may have multiple channels.</returns>
+    public int CheckVector(int elemChannels, int depth = -1, bool requireContinuous = true)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_checkVector(
+                Handle, elemChannels, depth, requireContinuous ? 1 : 0, out var ret));
+        return ret;
+    }
+
+#pragma warning disable CA1720 // Identifiers should not contain type names
+
+    /// <summary>
+    /// Returns a pointer to the specified matrix row.
+    /// </summary>
+    /// <param name="i0">Index along the dimension 0</param>
+    /// <returns></returns>
+    public IntPtr Ptr(int i0)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_ptr1d(Handle, i0, out var ret));
+        // Returns an interior pointer into this Mat; keep it alive for the caller's dereference.
+        GC.KeepAlive(this);
+        return ret;
+    }
+
+    /// <summary>
+    /// Returns a pointer to the specified matrix element.
+    /// </summary>
+    /// <param name="i0">Index along the dimension 0</param>
+    /// <param name="i1">Index along the dimension 1</param>
+    /// <returns></returns>
+    public IntPtr Ptr(int i0, int i1)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_ptr2d(Handle, i0, i1, out var ret));
+        // Returns an interior pointer into this Mat; keep it alive for the caller's dereference.
+        GC.KeepAlive(this);
+        return ret;
+    }
+
+    /// <summary>
+    /// Returns a pointer to the specified matrix element.
+    /// </summary>
+    /// <param name="i0">Index along the dimension 0</param>
+    /// <param name="i1">Index along the dimension 1</param>
+    /// <param name="i2">Index along the dimension 2</param>
+    /// <returns></returns>
+    public IntPtr Ptr(int i0, int i1, int i2)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_ptr3d(Handle, i0, i1, i2, out var ret));
+        // Returns an interior pointer into this Mat; keep it alive for the caller's dereference.
+        GC.KeepAlive(this);
+        return ret;
+    }
+
+    /// <summary>
+    /// Returns a pointer to the specified matrix element.
+    /// </summary>
+    /// <param name="idx">Array of Mat::dims indices.</param>
+    /// <returns></returns>
+    public IntPtr Ptr(params int[] idx)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_ptrnd(Handle, idx, out var ret));
+        // Returns an interior pointer into this Mat; keep it alive for the caller's dereference.
+        GC.KeepAlive(this);
+        return ret;
+    }
+        
+#pragma warning restore CA1720 // Identifiers should not contain type names
+
+    /// <summary>
+    /// includes several bit-fields:
+    /// - the magic signature
+    /// - continuity flag
+    /// - depth
+    /// - number of channels
+    /// </summary>
+    public int Flags
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_flags(Handle, out var ret));
+            return ret;
+        }
+    }
+
+    /// <summary>
+    /// The array dimensionality. In OpenCV 5 this can also be 0 (a scalar; rows == cols == total() == 1)
+    /// or 1 (a 1D array; dims == rows == 1, cols == total() == N); use <see cref="Empty"/> to tell an
+    /// empty matrix apart from a 0D scalar.
+    /// </summary>
+    public int Dims
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_dims(Handle, out var ret));
+            return ret;
+        }
+    }
+
+    /// <summary>
+    /// Returns the shape of the matrix as a <see cref="MatShape"/> (OpenCV 5), including its data
+    /// layout and channel count, and distinguishing an empty matrix from a 0-D scalar.
+    /// </summary>
+    public MatShape Shape()
+    {
+        ThrowIfDisposed();
+        var sizes = new int[10]; // cv::MatShape::MAX_DIMS
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_shape(Handle, sizes, out var ndims, out var layout, out var channels, out var empty));
+
+        if (empty != 0)
+            return MatShape.Empty;
+        if (ndims <= 0)
+            return MatShape.Scalar((DataLayout)layout);
+        var dims = new int[ndims];
+        Array.Copy(sizes, dims, ndims);
+        return new MatShape(dims, (DataLayout)layout, channels);
+    }
+
+    /// <summary>
+    /// the number of rows or -1 when the array has more than 2 dimensions
+    /// </summary>
+    public int Rows
+    {
+        get
+        {
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_rows(Handle, out var ret));
+            return ret;
+        }
+    }
+
+    /// <summary>
+    /// the number of rows or -1 when the array has more than 2 dimensions
+    /// </summary>
+    /// <returns></returns>
+    public int Height => Rows;
+
+    /// <summary>
+    /// the number of columns or -1 when the array has more than 2 dimensions
+    /// </summary>
+    /// <returns></returns>
+    public int Cols
+    {
+        get
+        {
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_cols(Handle, out var ret));
+            return ret;
+        }
+    }
+
+    /// <summary>
+    /// the number of columns or -1 when the array has more than 2 dimensions
+    /// </summary>
+    /// <returns></returns>
+    public int Width => Cols;
+
+    /// <summary>
+    /// pointer to the data
+    /// </summary>
+    public IntPtr Data
+    {
+        get
+        {
+            unsafe
+            {
+                return new IntPtr(DataPointer);
+            }
+        }
+    }
+
+    /// <summary>
+    /// unsafe pointer to the data
+    /// </summary>
+    public unsafe byte* DataPointer
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_data(Handle, out var ret));
+            // Returns an interior pointer into this Mat; keep it alive for the caller's dereference.
+            GC.KeepAlive(this);
+            return ret;
+        }
+    }
+
+    /// <summary>
+    /// The pointer that is possible to compute a relative sub-array position in the main container array using locateROI()
+    /// </summary>
+    public IntPtr DataStart
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_datastart(Handle, out var ret));
+            // Returns an interior pointer into this Mat; keep it alive for the caller's dereference.
+            GC.KeepAlive(this);
+            return ret;
+        }
+    }
+
+    /// <summary>
+    /// The pointer that is possible to compute a relative sub-array position in the main container array using locateROI()
+    /// </summary>
+    public IntPtr DataEnd
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_dataend(Handle, out var ret));
+            // Returns an interior pointer into this Mat; keep it alive for the caller's dereference.
+            GC.KeepAlive(this);
+            return ret;
+        }
+    }
+
+    /// <summary>
+    /// The pointer that is possible to compute a relative sub-array position in the main container array using locateROI()
+    /// </summary>
+    public IntPtr DataLimit
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.core_Mat_datalimit(Handle, out var ret));
+            // Returns an interior pointer into this Mat; keep it alive for the caller's dereference.
+            GC.KeepAlive(this);
+            return ret;
+        }
+    }
+
+    /// <summary>
+    /// Returns a matrix size.
+    /// </summary>
+    /// <returns></returns>
+    public Size Size()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_size(Handle, out var ret));
+        return ret;
+    }
+
+    /// <summary>
+    /// Returns a matrix size.
+    /// </summary>
+    /// <param name="dim"></param>
+    /// <returns></returns>
+    public int Size(int dim)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_sizeAt(Handle, dim, out var ret));
+        return ret;
+    }
+        
+    /// <summary>
+    /// Returns number of bytes each matrix row occupies.
+    /// </summary>
+    /// <returns></returns>
+    public long Step()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_step(Handle, out var ret));
+        return ret.ToInt64();
+    }
+
+    /// <summary>
+    /// Returns number of bytes each matrix row occupies.
+    /// </summary>
+    /// <param name="i"></param>
+    /// <returns></returns>
+    public long Step(int i)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_stepAt(Handle, i, out var ret));
+        return ret.ToInt64();
+    }
+
+    #region ToString
+
+    /// <summary>
+    /// Returns a string that represents this Mat.
+    /// </summary>
+    /// <returns></returns>
+    public override string ToString()
+    {
+        if (IsDisposed)
+            return "Mat [disposed]";
+
+        return "Mat [ " +
+               Rows + "*" + Cols + "*" + Type().ToString() +
+               ", IsContinuous=" + IsContinuous() + ", IsSubmatrix=" + IsSubmatrix() +
+               ", Ptr=0x" + Convert.ToString(ptr.ToInt64(), 16) +
+               ", Data=0x" + Convert.ToString(Data.ToInt64(), 16) +
+               " ]";
+    }
+
+    #endregion
+
+    #region Dump
+
+    /// <summary>
+    /// Returns a string that represents each element value of Mat.
+    /// This method corresponds to std::ostream &lt;&lt; Mat
+    /// </summary>
+    /// <param name="format"></param>
+    /// <returns></returns>
+    public string Dump(FormatType format = FormatType.Default)
+    {
+        ThrowIfDisposed();
+        return Cv2.Format(this, format);
+    }
+
+    #endregion
+
+    #region EmptyClone
+
+    /// <summary>
+    /// Makes a Mat that have the same size, depth and channels as this image
+    /// </summary>
+    /// <returns></returns>
+    public Mat EmptyClone()
+    {
+        ThrowIfDisposed();
+        return new Mat(Size(), Type());
+    }
+
+    #endregion
+        
+    #region Element Indexer
+
+    /// <summary>
+    /// Gets a type-specific indexer. The indexer has getters/setters to access each matrix element.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
+    [Obsolete("Use At<T>(row, col) for occasional access, or AsRows<T>() for high-performance loops. " +
+              "GetGenericIndexer uses Marshal.PtrToStructure which is slower than both alternatives.")]
+    public Indexer<T> GetGenericIndexer<T>() where T : struct
+    {
+        return new Indexer<T>(this);
+    }
+
+    /// <summary>
+    /// Gets a type-specific unsafe indexer. The indexer has getters/setters to access each matrix element.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
+    public UnsafeIndexer<T> GetUnsafeGenericIndexer<T>() where T : unmanaged 
+        => new(this);
+
+#pragma warning disable CA1034
+    /// <summary>
+    /// Mat Indexer
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    [Obsolete("Use At<T>(row, col) for occasional access, or AsRows<T>() for high-performance loops. " +
+              "This class uses Marshal.PtrToStructure which is slower than both alternatives.")]
+    public sealed class Indexer<T> : MatIndexer<T> where T : struct
+    {
+        private readonly long ptrVal;
+
+        internal Indexer(Mat parent)
+            : base(parent)
+        {
+            ptrVal = parent.Data.ToInt64();
+        }
+
+        /// <summary>
+        /// 1-dimensional indexer
+        /// </summary>
+        /// <param name="i0">Index along the dimension 0</param>
+        /// <returns>A value to the specified array element.</returns>
+        public override T this[int i0]
+        {
+            get
+            {
+                var p = new IntPtr(ptrVal + (Steps[0] * i0));
+                return Marshal.PtrToStructure<T>(p);
+            }
+            set
+            {
+                var p = new IntPtr(ptrVal + (Steps[0] * i0));
+                Marshal.StructureToPtr(value, p, false);
+            }
+        }
+
+        /// <summary>
+        /// 2-dimensional indexer
+        /// </summary>
+        /// <param name="i0">Index along the dimension 0</param>
+        /// <param name="i1">Index along the dimension 1</param>
+        /// <returns>A value to the specified array element.</returns>
+        public override T this[int i0, int i1]
+        {
+            get
+            {
+                var p = new IntPtr(ptrVal + (Steps[0] * i0) + (Steps[1] * i1));
+                return Marshal.PtrToStructure<T>(p);
+            }
+            set
+            {
+                var p = new IntPtr(ptrVal + (Steps[0] * i0) + (Steps[1] * i1));
+                Marshal.StructureToPtr(value, p, false);
+            }
+        }
+
+        /// <summary>
+        /// 3-dimensional indexer
+        /// </summary>
+        /// <param name="i0">Index along the dimension 0</param>
+        /// <param name="i1">Index along the dimension 1</param>
+        /// <param name="i2"> Index along the dimension 2</param>
+        /// <returns>A value to the specified array element.</returns>
+        public override T this[int i0, int i1, int i2]
+        {
+            get
+            {
+                var p = new IntPtr(ptrVal + (Steps[0] * i0) + (Steps[1] * i1) + (Steps[2] * i2));
+                return Marshal.PtrToStructure<T>(p);
+            }
+            set
+            {
+                var p = new IntPtr(ptrVal + (Steps[0] * i0) + (Steps[1] * i1) + (Steps[2] * i2));
+                Marshal.StructureToPtr(value, p, false);
+            }
+        }
+
+        /// <summary>
+        /// n-dimensional indexer
+        /// </summary>
+        /// <param name="idx">Array of Mat::dims indices.</param>
+        /// <returns>A value to the specified array element.</returns>
+        public override T this[params int[] idx]
+        {
+            get
+            {
+                long offset = 0;
+                for (var i = 0; i < idx.Length; i++)
+                {
+                    offset += Steps[i] * idx[i];
+                }
+
+                var p = new IntPtr(ptrVal + offset);
+                return Marshal.PtrToStructure<T>(p);
+            }
+            set
+            {
+                long offset = 0;
+                for (var i = 0; i < idx.Length; i++)
+                {
+                    offset += Steps[i] * idx[i];
+                }
+
+                var p = new IntPtr(ptrVal + offset);
+                Marshal.StructureToPtr(value, p, false);
+            }
+        }
+    }
+
+#pragma warning disable CA1034
+    /// <summary>
+    /// Mat Indexer
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public sealed class UnsafeIndexer<T> : MatIndexer<T> where T : unmanaged
+    {
+        private readonly long ptrVal;
+
+        internal UnsafeIndexer(Mat parent)
+            : base(parent)
+        {
+            ptrVal = parent.Data.ToInt64();
+        }
+
+        /// <summary>
+        /// 1-dimensional indexer
+        /// </summary>
+        /// <param name="i0">Index along the dimension 0</param>
+        /// <returns>A value to the specified array element.</returns>
+        public override unsafe T this[int i0]
+        {
+            get
+            {
+                var p = (T*) (ptrVal + (Steps[0] * i0));
+                return *p;
+            }
+            set
+            {
+                var p = (T*) (ptrVal + (Steps[0] * i0));
+                *p = value;
+            }
+        }
+
+        /// <summary>
+        /// 2-dimensional indexer
+        /// </summary>
+        /// <param name="i0">Index along the dimension 0</param>
+        /// <param name="i1">Index along the dimension 1</param>
+        /// <returns>A value to the specified array element.</returns>
+        public override unsafe T this[int i0, int i1]
+        {
+            get
+            {
+                var p = (T*) (ptrVal + (Steps[0] * i0) + (Steps[1] * i1));
+                return *p;
+            }
+            set
+            {
+                var p = (T*) (ptrVal + (Steps[0] * i0) + (Steps[1] * i1));
+                *p = value;
+            }
+        }
+
+        /// <summary>
+        /// 3-dimensional indexer
+        /// </summary>
+        /// <param name="i0">Index along the dimension 0</param>
+        /// <param name="i1">Index along the dimension 1</param>
+        /// <param name="i2"> Index along the dimension 2</param>
+        /// <returns>A value to the specified array element.</returns>
+        public override unsafe T this[int i0, int i1, int i2]
+        {
+            get
+            {
+                var p = (T*) (ptrVal + (Steps[0] * i0) + (Steps[1] * i1) + (Steps[2] * i2));
+                return *p;
+            }
+            set
+            {
+                var p = (T*) (ptrVal + (Steps[0] * i0) + (Steps[1] * i1) + (Steps[2] * i2));
+                *p = value;
+            }
+        }
+
+        /// <summary>
+        /// n-dimensional indexer
+        /// </summary>
+        /// <param name="idx">Array of Mat::dims indices.</param>
+        /// <returns>A value to the specified array element.</returns>
+        public override unsafe T this[params int[] idx]
+        {
+            get
+            {
+                long offset = 0;
+                for (var i = 0; i < idx.Length; i++)
+                {
+                    offset += Steps[i] * idx[i];
+                }
+
+                var p = (T*) (ptrVal + offset);
+                return *p;
+            }
+            set
+            {
+                long offset = 0;
+                for (var i = 0; i < idx.Length; i++)
+                {
+                    offset += Steps[i] * idx[i];
+                }
+
+                var p = (T*) (ptrVal + offset);
+                *p = value;
+            }
+        }
+    }
+
+    #endregion
+
+    #region Get/Set
+
+    /// <summary>
+    /// Returns a value to the specified array element.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="i0">Index along the dimension 0</param>
+    /// <returns>A value to the specified array element.</returns>
+    public T Get<T>(int i0) where T : struct
+    {
+        var p = Ptr(i0);
+        return Marshal.PtrToStructure<T>(p);
+    }
+
+    /// <summary>
+    /// Returns a value to the specified array element.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="i0">Index along the dimension 0</param>
+    /// <param name="i1">Index along the dimension 1</param>
+    /// <returns>A value to the specified array element.</returns>
+    public T Get<T>(int i0, int i1) where T : struct
+    {
+        var p = Ptr(i0, i1);
+        return Marshal.PtrToStructure<T>(p);
+    }
+
+    /// <summary>
+    /// Returns a value to the specified array element.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="i0">Index along the dimension 0</param>
+    /// <param name="i1">Index along the dimension 1</param>
+    /// <param name="i2">Index along the dimension 2</param>
+    /// <returns>A value to the specified array element.</returns>
+    public T Get<T>(int i0, int i1, int i2) where T : struct
+    {
+        var p = Ptr(i0, i1, i2);
+        return Marshal.PtrToStructure<T>(p);
+    }
+
+    /// <summary>
+    /// Returns a value to the specified array element.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="idx">Array of Mat::dims indices.</param>
+    /// <returns>A value to the specified array element.</returns>
+    public T Get<T>(params int[] idx) where T : struct
+    {
+        var p = Ptr(idx);
+        return Marshal.PtrToStructure<T>(p);
+    }
+
+    /// <summary>
+    /// Returns a reference to the specified array element.
+    /// For 2D matrices, <paramref name="i0"/> is the row index (dimension 0).
+    /// Do NOT call this with a column index on a row-submatrix obtained from <see cref="Row"/>;
+    /// use <see cref="At{T}(int, int)"/> or <see cref="RowSpan{T}"/> instead.
+    /// For performance-sensitive pixel loops, prefer <see cref="AsRows{T}"/>.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="i0">Index along the dimension 0</param>
+    /// <returns>A reference to the specified array element.</returns>
+    public unsafe ref T At<T>(int i0) where T : unmanaged
+    {
+#if DEBUG
+        if (Dims == 2 && Rows == 1 && Cols > 1)
+            throw new InvalidOperationException(
+                "At<T>(int) on a 1-row 2D matrix treats i0 as a row index, not a column index. " +
+                "Use At<T>(0, col) or RowSpan<T>(0) instead.");
+#endif
+        var p = Ptr(i0);
+        return ref Unsafe.AsRef<T>(p.ToPointer());
+    }
+
+    /// <summary>
+    /// Returns a value to the specified array element.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="i0">Index along the dimension 0</param>
+    /// <param name="i1">Index along the dimension 1</param>
+    /// <returns>A value to the specified array element.</returns>
+    public unsafe ref T At<T>(int i0, int i1) where T : unmanaged
+    {
+        var p = Ptr(i0, i1);
+        return ref Unsafe.AsRef<T>(p.ToPointer());
+    }
+
+    /// <summary>
+    /// Returns a value to the specified array element.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="i0">Index along the dimension 0</param>
+    /// <param name="i1">Index along the dimension 1</param>
+    /// <param name="i2">Index along the dimension 2</param>
+    /// <returns>A value to the specified array element.</returns>
+    public unsafe ref T At<T>(int i0, int i1, int i2) where T : unmanaged
+    {
+        var p = Ptr(i0, i1, i2);
+        return ref Unsafe.AsRef<T>(p.ToPointer());
+    }
+
+    /// <summary>
+    /// Returns a value to the specified array element.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="idx">Array of Mat::dims indices.</param>
+    /// <returns>A value to the specified array element.</returns>
+    public unsafe ref T At<T>(params int[] idx) where T : unmanaged
+    {
+        var p = Ptr(idx);
+        return ref Unsafe.AsRef<T>(p.ToPointer());
+    }
+
+    /// <summary>
+    /// Set a value to the specified array element.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="i0">Index along the dimension 0</param>
+    /// <param name="value"></param>
+    public void Set<T>(int i0, T value) where T : struct
+    {
+        var p = Ptr(i0);
+        Marshal.StructureToPtr(value, p, false);
+    }
+
+    /// <summary>
+    /// Set a value to the specified array element.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="i0">Index along the dimension 0</param>
+    /// <param name="i1">Index along the dimension 1</param>
+    /// <param name="value"></param>
+    public void Set<T>(int i0, int i1, T value) where T : struct
+    {
+        var p = Ptr(i0, i1);
+        Marshal.StructureToPtr(value, p, false);
+    }
+
+    /// <summary>
+    /// Set a value to the specified array element.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="i0">Index along the dimension 0</param>
+    /// <param name="i1">Index along the dimension 1</param>
+    /// <param name="i2">Index along the dimension 2</param>
+    /// <param name="value"></param>
+    public void Set<T>(int i0, int i1, int i2, T value) where T : struct
+    {
+        var p = Ptr(i0, i1, i2);
+        Marshal.StructureToPtr(value, p, false);
+    }
+
+    /// <summary>
+    /// Set a value to the specified array element.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="idx">Array of Mat::dims indices.</param>
+    /// <param name="value"></param>
+    public void Set<T>(int[] idx, T value) where T : struct
+    {
+        var p = Ptr(idx);
+        Marshal.StructureToPtr(value, p, false);
+    }
+
+    #endregion
+        
+    #region Get/SetArray
+
+    private static readonly Dictionary<Type, int> dataDimensionMap = new()
+    {
+        {typeof(byte), 1},
+        {typeof(sbyte), 1},
+        {typeof(short), 1},
+        {typeof(ushort), 1},
+        {typeof(int), 1},
+        {typeof(float), 1},
+        {typeof(double), 1},
+        {typeof(Point), 2},
+        {typeof(Point2f), 2},
+        {typeof(Point2d), 2},
+        {typeof(Point3i), 3},
+        {typeof(Point3f), 3},
+        {typeof(Point3d), 3},
+        {typeof(Size), 2},
+        {typeof(Size2f), 2},
+        {typeof(Size2d), 2},
+        {typeof(Rect), 4},
+        {typeof(Rect2f), 4},
+        {typeof(Rect2d), 4},
+        //{typeof(DMatch), 4},
+        {typeof(Vec2b), 2},
+        {typeof(Vec2s), 2},
+        {typeof(Vec2w), 2},
+        {typeof(Vec2i), 2},
+        {typeof(Vec2f), 2},
+        {typeof(Vec2d), 2},
+        {typeof(Vec3b), 3},
+        {typeof(Vec3s), 3},
+        {typeof(Vec3w), 3},
+        {typeof(Vec3i), 3},
+        {typeof(Vec3f), 3},
+        {typeof(Vec3d), 3},
+        {typeof(Vec4b), 4},
+        {typeof(Vec4s), 4},
+        {typeof(Vec4w), 4},
+        {typeof(Vec4i), 4},
+        {typeof(Vec4f), 4},
+        {typeof(Vec4d), 4},
+        {typeof(Vec6b), 6},
+        {typeof(Vec6s), 6},
+        {typeof(Vec6w), 6},
+        {typeof(Vec6i), 6},
+        {typeof(Vec6f), 6},
+        {typeof(Vec6d), 6},
+    };
+        
+    private static readonly Dictionary<Type, MatType[]> acceptableTypesMap = new()
+    {
+        {typeof(byte), [MatType.CV_8SC1, MatType.CV_8UC1] },
+        {typeof(sbyte), [MatType.CV_8SC1, MatType.CV_8UC1] },
+        {typeof(short), [MatType.CV_16SC1, MatType.CV_16UC1] },
+        {typeof(ushort), [MatType.CV_16SC1, MatType.CV_16UC1] },
+        {typeof(int), [MatType.CV_32SC1] },
+        {typeof(float), [MatType.CV_32FC1] },
+        {typeof(double), [MatType.CV_64FC1] },
+        {typeof(Point), [MatType.CV_32SC2] },
+        {typeof(Point2f), [MatType.CV_32FC2] },
+        {typeof(Point2d), [MatType.CV_64FC2] },
+        {typeof(Point3i), [MatType.CV_32SC3] },
+        {typeof(Point3f), [MatType.CV_32FC3] },
+        {typeof(Point3d), [MatType.CV_64FC3] },
+        {typeof(Size), [MatType.CV_32SC2] },
+        {typeof(Size2f), [MatType.CV_32FC2] },
+        {typeof(Size2d), [MatType.CV_64FC2] },
+        {typeof(Rect), [MatType.CV_32SC4] },
+        {typeof(Rect2f), [MatType.CV_32FC4] },
+        {typeof(Rect2d), [MatType.CV_64FC4] },
+        //{typeof(DMatch), new[]{MatType.CV_32FC4}},
+        {typeof(Vec2b), [MatType.CV_8UC2] },
+        {typeof(Vec2s), [MatType.CV_16SC2] },
+        {typeof(Vec2w), [MatType.CV_16UC2] },
+        {typeof(Vec2i), [MatType.CV_32SC2] },
+        {typeof(Vec2f), [MatType.CV_32FC2] },
+        {typeof(Vec2d), [MatType.CV_64FC2] },
+        {typeof(Vec3b), [MatType.CV_8UC3] },
+        {typeof(Vec3s), [MatType.CV_16SC3] },
+        {typeof(Vec3w), [MatType.CV_16UC3] },
+        {typeof(Vec3i), [MatType.CV_32SC3] },
+        {typeof(Vec3f), [MatType.CV_32FC3] },
+        {typeof(Vec3d), [MatType.CV_64FC3] },
+        {typeof(Vec4b), [MatType.CV_8UC4] },
+        {typeof(Vec4s), [MatType.CV_16SC4] },
+        {typeof(Vec4w), [MatType.CV_16UC4] },
+        {typeof(Vec4i), [MatType.CV_32SC4] },
+        {typeof(Vec4f), [MatType.CV_32FC4] },
+        {typeof(Vec4d), [MatType.CV_64FC4] },
+        {typeof(Vec6b), [MatType.CV_8UC(6)] },
+        {typeof(Vec6s), [MatType.CV_16SC(6)] },
+        {typeof(Vec6w), [MatType.CV_16UC(6)] },
+        {typeof(Vec6i), [MatType.CV_32SC(6)] },
+        {typeof(Vec6f), [MatType.CV_32FC(6)] },
+        {typeof(Vec6d), [MatType.CV_64FC(6)] },
+    };
+
+    private void CheckArgumentsForConvert<T>(Array data)
+        where T : unmanaged
+    {
+        ThrowIfDisposed();
+
+        if (data is null)
+            throw new ArgumentNullException(nameof(data));
+
+        if (!dataDimensionMap.TryGetValue(typeof(T), out var dataDimension))
+            throw new ArgumentException($"Type argument {typeof(T)} is not supported");
+        if (!acceptableTypesMap.TryGetValue(typeof(T), out var acceptableTypes))
+            throw new ArgumentException($"Type argument {typeof(T)} is not supported");
+
+        var t = Type();
+        if ((data.Length * dataDimension) % t.Channels != 0)
+            throw new OpenCvSharpException(
+                $"Provided data element number ({data.Length}) should be multiple of the Mat channels count ({t.Channels})");
+
+        if (acceptableTypes.Length > 0)
+        {
+            var isValidDepth = acceptableTypes.Any(type => type == t);
+            if (!isValidDepth)
+                throw new OpenCvSharpException("Mat data type is not compatible: " + t);
+        }
+    }
+
+    /// <summary>
+    /// Get the data of this matrix as array
+    /// </summary>
+    /// <param name="data">Primitive or Vec array to be copied</param>
+    /// <returns>Length of copied bytes</returns>
+    /// <example>
+    /// using var m1 = new Mat(1, 1, MatType.CV_8UC1);
+    /// m1.GetArray(out byte[] array);
+    ///
+    /// using var m2 = new Mat(1, 1, MatType.CV_32SC1);
+    /// m2.GetArray(out int[] array);
+    ///
+    /// using var m3 = new Mat(1, 1, MatType.CV_8UC(6));
+    /// m3.GetArray(out Vec6b[] array);
+    ///
+    /// using var m4 = new Mat(1, 1, MatType.CV_64FC4);
+    /// m4.GetArray(out Vec4d[] array);
+    /// </example>
+    [Pure]
+    public bool GetArray<T>(out T[] data)
+        where T : unmanaged
+    {
+        data = new T[(long)Rows * Cols];
+
+        CheckArgumentsForConvert<T>(data);
+
+        unsafe
+        {
+            fixed (T* pData = data)
+            {
+                NativeMethods.HandleException(
+                    NativeMethods.core_Mat_getMatData(Handle, (byte*)pData, out var success));
+                return success != 0;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Get the data of this matrix as array
+    /// </summary>
+    /// <param name="data">Primitive or Vec array to be copied</param>
+    /// <returns>Length of copied bytes</returns>
+    /// <example>
+    /// using var m1 = new Mat(1, 1, MatType.CV_8UC1);
+    /// m1.GetRectangularArray(out byte[,] array);
+    ///
+    /// using var m2 = new Mat(1, 1, MatType.CV_32SC1);
+    /// m2.GetRectangularArray(out int[,] array);
+    ///
+    /// using var m3 = new Mat(1, 1, MatType.CV_8UC(6));
+    /// m3.GetRectangularArray(out Vec6b[,] array);
+    ///
+    /// using var m4 = new Mat(1, 1, MatType.CV_64FC4);
+    /// m4.GetRectangularArray(out Vec4d[,] array);
+    /// </example>
+    [Pure]
+    public bool GetRectangularArray<T>(out T[,] data)
+        where T : unmanaged
+    {
+        data = new T[Rows, Cols];
+
+        CheckArgumentsForConvert<T>(data);
+
+        unsafe
+        {
+            fixed (T* pData = data)
+            {
+                NativeMethods.HandleException(
+                    NativeMethods.core_Mat_getMatData(Handle, (byte*)pData, out var success));
+                return success != 0;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Set the specified array data to this matrix
+    /// </summary>
+    /// <param name="data">Primitive or Vec array to be copied</param>
+    /// <returns>Length of copied bytes</returns>
+    public bool SetArray<T>(params T[] data)
+        where T : unmanaged
+    {
+        CheckArgumentsForConvert<T>(data);
+
+        unsafe
+        {
+            fixed (T* pData = data)
+            {
+                NativeMethods.HandleException(
+                    NativeMethods.core_Mat_setMatData(Handle, (byte*)pData, out var success));
+                return success != 0;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Set the specified array data to this matrix
+    /// </summary>
+    /// <param name="data">Primitive or Vec array to be copied</param>
+    /// <returns>Length of copied bytes</returns>
+    public bool SetRectangularArray<T>(T[,] data)
+        where T : unmanaged
+    {
+        CheckArgumentsForConvert<T>(data);
+
+        unsafe
+        {
+            fixed (T* pData = data)
+            {
+                NativeMethods.HandleException(
+                    NativeMethods.core_Mat_setMatData(Handle, (byte*)pData, out var success));
+                return success != 0;
+            }
+        }
+    }
+
+    #endregion
+
+    #region To*
+
+    /// <summary>
+    /// Encodes an image into a memory buffer.
+    /// </summary>
+    /// <param name="ext">Encodes an image into a memory buffer.</param>
+    /// <param name="prms">Format-specific parameters.</param>
+    /// <returns></returns>
+    public byte[] ToBytes(string ext = ".png", int[]? prms = null)
+    {
+        Cv2.ImEncode(ext, this, out var buf, prms);
+        return buf;
+    }
+
+    /// <summary>
+    /// Encodes an image into a memory buffer.
+    /// </summary>
+    /// <param name="ext">Encodes an image into a memory buffer.</param>
+    /// <param name="prms">Format-specific parameters.</param>
+    /// <returns></returns>
+    public byte[] ToBytes(string ext = ".png", params ImageEncodingParam[] prms)
+    {
+        Cv2.ImEncode(ext, this, out var buf, prms);
+        return buf;
+    }
+
+    /// <summary>
+    /// Converts Mat to System.IO.MemoryStream
+    /// </summary>
+    /// <param name="ext"></param>
+    /// <param name="prms"></param>
+    /// <returns></returns>
+    public MemoryStream ToMemoryStream(string ext = ".png", params ImageEncodingParam[] prms)
+    {
+        var bytes = ToBytes(ext, prms);
+        return new MemoryStream(bytes, 0, bytes.Length, writable: false, publiclyVisible: true);
+    }
+
+    /// <summary>
+    /// Writes image data encoded from this Mat to System.IO.Stream
+    /// </summary>
+    /// <param name="stream"></param>
+    /// <param name="ext"></param>
+    /// <param name="prms"></param>
+    /// <returns></returns>
+    public void WriteToStream(Stream stream, string ext = ".png", params ImageEncodingParam[] prms)
+    {
+        if (stream is null)
+            throw new ArgumentNullException(nameof(stream));
+        var imageBytes = ToBytes(ext, prms);
+        stream.Write(imageBytes, 0, imageBytes.Length);
+    }
+
+    #endregion
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="n"></param>
+    /// <returns></returns>
+    public Mat Alignment(int n = 4)
+    {
+        var newCols = Cv2.AlignSize(Cols, n);
+        using var pMat = new Mat(Rows, newCols, Type());
+#pragma warning disable CA2000
+        var roiMat = new Mat(pMat, new Rect(0, 0, Cols, Rows));
+#pragma warning restore CA2000
+        CopyTo(roiMat);
+        return roiMat;
+    }
+
+    /// <summary>
+    /// Creates type-specific Mat instance from this.
+    /// </summary>
+    /// <typeparam name="TMat"></typeparam>
+    /// <returns></returns>
+    public TMat Cast<TMat>()
+        where TMat : Mat
+    {
+        var type = typeof(TMat);
+
+        var obj = Activator.CreateInstance(type, this);
+        if (obj is TMat mat)
+            return mat;
+
+        throw new NotSupportedException($"Failed to convert Mat to {typeof(TMat).Name}");
+    }
+
+    #region ForEach
+
+// ReSharper disable InconsistentNaming
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsByte(MatForeachFunctionByte operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_forEach_uchar(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec2b(MatForeachFunctionVec2b operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_forEach_Vec2b(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec3b(MatForeachFunctionVec3b operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_forEach_Vec3b(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec4b(MatForeachFunctionVec4b operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException( 
+            NativeMethods.core_Mat_forEach_Vec4b(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec6b(MatForeachFunctionVec6b operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_forEach_Vec6b(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsInt16(MatForeachFunctionInt16 operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException( 
+            NativeMethods.core_Mat_forEach_short(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec2s(MatForeachFunctionVec2s operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException( 
+            NativeMethods.core_Mat_forEach_Vec2s(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec3s(MatForeachFunctionVec3s operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException(  
+            NativeMethods.core_Mat_forEach_Vec3s(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec4s(MatForeachFunctionVec4s operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException(   
+            NativeMethods.core_Mat_forEach_Vec4s(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec6s(MatForeachFunctionVec6s operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException(  
+            NativeMethods.core_Mat_forEach_Vec6s(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsInt32(MatForeachFunctionInt32 operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_forEach_int(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec2i(MatForeachFunctionVec2i operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException( 
+            NativeMethods.core_Mat_forEach_Vec2i(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec3i(MatForeachFunctionVec3i operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_forEach_Vec3i(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec4i(MatForeachFunctionVec4i operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException( 
+            NativeMethods.core_Mat_forEach_Vec4i(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec6i(MatForeachFunctionVec6i operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException(  
+            NativeMethods.core_Mat_forEach_Vec6i(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsFloat(MatForeachFunctionFloat operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException(  
+            NativeMethods.core_Mat_forEach_float(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec2f(MatForeachFunctionVec2f operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException( 
+            NativeMethods.core_Mat_forEach_Vec2f(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec3f(MatForeachFunctionVec3f operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException(  
+            NativeMethods.core_Mat_forEach_Vec3f(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec4f(MatForeachFunctionVec4f operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException(  
+            NativeMethods.core_Mat_forEach_Vec4f(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec6f(MatForeachFunctionVec6f operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException( 
+            NativeMethods.core_Mat_forEach_Vec6f(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsDouble(MatForeachFunctionDouble operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException( 
+            NativeMethods.core_Mat_forEach_double(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec2d(MatForeachFunctionVec2d operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException(  
+            NativeMethods.core_Mat_forEach_Vec2d(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec3d(MatForeachFunctionVec3d operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException(  
+            NativeMethods.core_Mat_forEach_Vec3d(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec4d(MatForeachFunctionVec4d operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException( 
+            NativeMethods.core_Mat_forEach_Vec4d(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+    /// <summary>
+    /// Runs the given functor over all matrix elements in parallel.
+    /// </summary>
+    /// <param name="operation"></param>
+    public void ForEachAsVec6d(MatForeachFunctionVec6d operation)
+    {
+        ThrowIfDisposed();
+        if (operation is null)
+            throw new ArgumentNullException(nameof(operation));
+
+        NativeMethods.HandleException(
+            NativeMethods.core_Mat_forEach_Vec6d(Handle, operation));
+        GC.KeepAlive(operation);
+    }
+
+// ReSharper restore InconsistentNaming
+
+    #endregion
+
+    /// <summary>
+    /// Returns a <see cref="Span{T}"/> over a single row of this matrix without allocating a submatrix object.
+    /// Padding bytes between rows are excluded from the span.
+    /// For iterating all rows in a loop, prefer <see cref="AsRows{T}"/> which captures the step once.
+    /// </summary>
+    /// <typeparam name="T">Element type. Must match the matrix element type.</typeparam>
+    /// <param name="row">Zero-based row index.</param>
+    /// <returns>A span covering the <paramref name="row"/>-th row.</returns>
+    public unsafe Span<T> RowSpan<T>(int row) where T : unmanaged
+    {
+        ThrowIfDisposed();
+        if (Dims != 2)
+            throw new InvalidOperationException("RowSpan is only supported for 2D matrices.");
+        if ((uint)row >= (uint)Rows)
+            throw new ArgumentOutOfRangeException(nameof(row));
+        var rowPtr = DataPointer + (nint)Step(0) * row;
+        return new Span<T>(rowPtr, Cols * ElemSize() / sizeof(T));
+    }
+
+    /// <summary>
+    /// Returns a <see cref="MatRowAccessor{T}"/> that provides efficient row-by-row access
+    /// with no P/Invoke per row or per element.
+    /// The data pointer, step, and dimensions are captured once; all indexing is pure pointer arithmetic.
+    /// </summary>
+    /// <typeparam name="T">Element type. Must match the matrix element type (e.g. <see cref="Vec3b"/> for CV_8UC3).</typeparam>
+    /// <returns>A <see cref="MatRowAccessor{T}"/> over this matrix.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the matrix is not 2-dimensional.</exception>
+    /// <remarks>
+    /// <b>Parallel usage:</b> Because <see cref="MatRowAccessor{T}"/> is a <c>ref struct</c> it cannot be
+    /// captured by a lambda closure. Call this method inside each <c>Parallel.For</c> iteration to obtain
+    /// a per-thread local accessor:
+    /// <code>
+    /// Parallel.For(0, mat.Rows, y =&gt;
+    /// {
+    ///     Span&lt;float&gt; row = mat.AsRows&lt;float&gt;()[y];
+    ///     for (int x = 0; x &lt; row.Length; x++)
+    ///         row[x] = ComputeValue(y, x);
+    /// });
+    /// </code>
+    /// </remarks>
+    public unsafe MatRowAccessor<T> AsRows<T>() where T : unmanaged
+    {
+        ThrowIfDisposed();
+        if (Dims != 2)
+            throw new InvalidOperationException("AsRows is only supported for 2D matrices.");
+        var elemCount = Cols * ElemSize() / sizeof(T);
+        return new MatRowAccessor<T>((nint)DataPointer, (nint)Step(0), Rows, elemCount);
+    }
+
+    /// <summary>
+    /// Creates a new span over the Mat.
+    /// The matrix must be continuous (<see cref="IsContinuous"/>); returns an empty span otherwise.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
+    public unsafe Span<T> AsSpan<T>() where T : unmanaged
+        => IsContinuous() ? new Span<T>(DataPointer, (int)Total() * ElemSize() / sizeof(T)) : [];
+
+    #endregion
+}

@@ -1,0 +1,32 @@
+#pragma warning disable CS1591
+
+// ReSharper disable IdentifierTypo
+// ReSharper disable InconsistentNaming
+
+namespace CodeBrix.VideoProcessing.OpenCV5.Dnn; //was previously: OpenCvSharp.Dnn;
+
+/// <summary>
+/// Enum of target devices for computations.
+/// </summary>
+public enum Target
+{
+    CPU,
+    OPENCL,
+    OPENCL_FP16,
+    MYRIAD,
+    VULKAN,
+
+    /// <summary>
+    /// FPGA device with CPU fallbacks using Inference Engine's Heterogeneous plugin.
+    /// </summary>
+    FPGA,
+    CUDA,
+    CUDA_FP16,
+    HDDL,
+    NPU,
+
+    /// <summary>
+    /// Only the ARM platform is supported. Low precision computing, accelerates model inference.
+    /// </summary>
+    CPU_FP16
+}

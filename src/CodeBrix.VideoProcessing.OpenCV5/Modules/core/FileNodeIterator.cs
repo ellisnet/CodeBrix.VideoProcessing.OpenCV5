@@ -1,0 +1,189 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+
+// ReSharper disable UnusedMember.Global
+
+namespace CodeBrix.VideoProcessing.OpenCV5; //was previously: OpenCvSharp;
+
+/// <inheritdoc cref="CvObject" />
+/// <summary>
+/// File Storage Node class
+/// </summary>
+public class FileNodeIterator : CvObject, IEquatable<FileNodeIterator>, IEnumerator<FileNode>
+{
+    /// <summary>
+    /// The default constructor
+    /// </summary>
+    public FileNodeIterator()
+    {
+        NativeMethods.HandleException(
+            NativeMethods.core_FileNodeIterator_new1(out var p));
+        InitSafeHandle(p);
+    }
+
+    /// <summary>
+    /// Initializes from cv::FileNode*
+    /// </summary>
+    /// <param name="ptr"></param>
+    public FileNodeIterator(IntPtr ptr)
+    {
+        InitSafeHandle(ptr);
+    }
+
+    /// <summary>
+    /// Releases unmanaged resources
+    /// </summary>
+
+    private void InitSafeHandle(IntPtr p, bool ownsHandle = true)
+    {
+        SetSafeHandle(new OpenCvPtrSafeHandle(p, ownsHandle,
+            static h => NativeMethods.HandleException(NativeMethods.core_FileNodeIterator_delete(h))));
+    }
+
+    /// <summary>
+    /// Reads node elements to the buffer with the specified format. 
+    /// Usually it is more convenient to use operator `>>` instead of this method.
+    /// </summary>
+    /// <param name="fmt">Specification of each array element.See @ref format_spec "format specification"</param>
+    /// <param name="vec">Pointer to the destination array.</param>
+    /// <param name="maxCount">Number of elements to read. If it is greater than number of remaining elements then all of them will be read.</param>
+    /// <returns></returns>
+    public FileNodeIterator ReadRaw(string fmt, IntPtr vec, long maxCount = int.MaxValue)
+    {
+        if (fmt is null)
+            throw new ArgumentNullException(nameof(fmt));
+        NativeMethods.HandleException(
+            NativeMethods.core_FileNodeIterator_readRaw(Handle, fmt, vec, new IntPtr(maxCount)));
+        return this;
+    }      
+
+    /// <summary>
+    /// *iterator
+    /// </summary>
+    public FileNode Current
+    {
+        get
+        {
+            ThrowIfDisposed();
+            NativeMethods.HandleException(
+                NativeMethods.core_FileNodeIterator_operatorAsterisk(Handle, out var p));
+            return new FileNode(p);
+        }
+    }
+
+    object IEnumerator.Current => Current;
+
+    /// <summary>
+    /// IEnumerable&lt;T&gt;.Reset
+    /// </summary>
+    public void Reset() => throw new NotImplementedException();
+
+    /// <summary>
+    /// iterator++
+    /// </summary>
+    /// <returns></returns>
+    public bool MoveNext()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_FileNodeIterator_operatorIncrement(Handle, out var changed));
+        return changed != 0;
+    }
+
+    /// <summary>
+    /// iterator += ofs
+    /// </summary>
+    /// <param name="ofs"></param>
+    /// <returns></returns>
+    public bool MoveNext(int ofs)
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.core_FileNodeIterator_operatorPlusEqual(Handle, ofs, out var changed));
+        return changed != 0;
+    }
+
+    /// <summary>
+    /// Reads node elements to the buffer with the specified format. 
+    /// Usually it is more convenient to use operator `>>` instead of this method.
+    /// </summary>
+    /// <param name="fmt">Specification of each array element.See @ref format_spec "format specification"</param>
+    /// <param name="vec">Pointer to the destination array.</param>
+    /// <param name="maxCount">Number of elements to read. If it is greater than number of remaining elements then all of them will be read.</param>
+    /// <returns></returns>
+    public FileNodeIterator ReadRaw(string fmt, byte[] vec, long maxCount = int.MaxValue)
+    {
+        if (fmt is null)
+            throw new ArgumentNullException(nameof(fmt));
+        if (vec is null)
+            throw new ArgumentNullException(nameof(vec));
+        unsafe
+        {
+            fixed (byte* vecPtr = vec)
+            {
+                NativeMethods.HandleException(
+                    NativeMethods.core_FileNodeIterator_readRaw(Handle, fmt, new IntPtr(vecPtr), new IntPtr(maxCount)));
+            }
+        }
+        return this;
+    }
+        
+#pragma warning disable 1591
+
+    public override bool Equals(object? obj)
+    {
+        return obj is FileNodeIterator fni && Equals(fni);
+    }
+        
+    public bool Equals(FileNodeIterator? other)
+    {
+        if (other is null)            
+            return false;            
+
+        ThrowIfDisposed();
+        other.ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.core_FileNodeIterator_operatorEqual(Handle, other.CvPtr, out var ret));
+
+        GC.KeepAlive(other);
+
+        return ret != 0;
+    }
+
+    public override int GetHashCode() => ptr.GetHashCode();
+        
+    public long Minus(FileNodeIterator it)
+    {
+        if (it is null)
+            throw new ArgumentNullException(nameof(it));
+        ThrowIfDisposed();
+        it.ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.core_FileNodeIterator_operatorMinus(Handle, it.CvPtr, out var ret));
+
+        GC.KeepAlive(it);
+
+        return ret.ToInt64();
+    }
+        
+    public bool LessThan(FileNodeIterator it)
+    {
+        if (it is null)
+            throw new ArgumentNullException(nameof(it));
+        ThrowIfDisposed();
+        it.ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.core_FileNodeIterator_operatorLessThan(Handle, it.CvPtr, out var ret));
+
+        GC.KeepAlive(it);
+
+        return ret != 0;
+    }
+
+#pragma warning restore 1591
+}

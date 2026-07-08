@@ -1,0 +1,404 @@
+using System;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+using CodeBrix.VideoProcessing.OpenCV5.Internal.Vectors;
+
+namespace CodeBrix.VideoProcessing.OpenCV5; //was previously: OpenCvSharp;
+
+/// <summary>
+/// The class implements the Expectation Maximization algorithm.
+/// </summary>
+public class EM : Algorithm
+{
+
+    #region Constants
+
+#pragma warning disable 1591
+    // ReSharper disable InconsistentNaming
+    public const int DEFAULT_NCLUSTERS = 5;
+    public const int DEFAULT_MAX_ITERS = 100;
+    // ReSharper restore InconsistentNaming
+#pragma warning restore 1591
+
+    #endregion
+
+    #region Init and Disposal
+
+    /// <summary>
+    /// Creates instance by pointer cv::Ptr&lt;EM&gt;
+    /// </summary>
+    private EM(IntPtr smartPtr, IntPtr rawPtr)
+        : base(smartPtr, rawPtr, p => NativeMethods.HandleException(NativeMethods.ml_Ptr_EM_delete(p)))
+    { }
+    /// <summary>
+    /// Creates empty EM model. 
+    /// </summary>
+    /// <returns></returns>
+    public static EM Create()
+    {
+        NativeMethods.HandleException(
+            NativeMethods.ml_EM_create(out var ret));
+        NativeMethods.HandleException(NativeMethods.ml_Ptr_EM_get(ret, out var rawPtr));
+        return new EM(ret, rawPtr);
+    }
+
+    /// <summary>
+    /// Loads and creates a serialized model from a file.
+    /// </summary>
+    /// <param name="filePath"></param>
+    /// <returns></returns>
+    public static EM Load(string filePath)
+    {
+        if (filePath is null)
+            throw new ArgumentNullException(nameof(filePath));
+        NativeMethods.HandleException(
+            NativeMethods.ml_EM_load(filePath, out var ret));
+        NativeMethods.HandleException(NativeMethods.ml_Ptr_EM_get(ret, out var rawPtr));
+        return new EM(ret, rawPtr);
+    }
+
+    /// <summary>
+    /// Loads algorithm from a String.
+    /// </summary>
+    /// <param name="strModel">he string variable containing the model you want to load.</param>
+    /// <returns></returns>
+    public static EM LoadFromString(string strModel)
+    {
+        if (strModel is null)
+            throw new ArgumentNullException(nameof(strModel));
+        NativeMethods.HandleException(
+            NativeMethods.ml_EM_loadFromString(strModel, out var ret));
+        NativeMethods.HandleException(NativeMethods.ml_Ptr_EM_get(ret, out var rawPtr));
+        return new EM(ret, rawPtr);
+    }
+
+    #endregion
+
+    #region Properties
+
+    /// <summary>
+    /// The number of mixture components in the Gaussian mixture model.
+    /// Default value of the parameter is EM::DEFAULT_NCLUSTERS=5. 
+    /// Some of EM implementation could determine the optimal number of mixtures 
+    /// within a specified value range, but that is not the case in ML yet.
+    /// </summary>
+    public int ClustersNumber
+    {
+        get
+        {
+            NativeMethods.HandleException(
+                NativeMethods.ml_EM_getClustersNumber(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            NativeMethods.HandleException(
+                NativeMethods.ml_EM_setClustersNumber(Handle, value));
+        }
+    }
+
+    /// <summary>
+    /// Constraint on covariance matrices which defines type of matrices.
+    /// </summary>
+    public int CovarianceMatrixType
+    {
+        get
+        {
+            NativeMethods.HandleException(
+                NativeMethods.ml_EM_getCovarianceMatrixType(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            NativeMethods.HandleException(
+                NativeMethods.ml_EM_setCovarianceMatrixType(Handle, value));
+        }
+    }
+
+    /// <summary>
+    /// The termination criteria of the %EM algorithm.
+    /// The EM algorithm can be terminated by the number of iterations 
+    /// termCrit.maxCount (number of M-steps) or when relative change of likelihood 
+    /// logarithm is less than termCrit.epsilon. 
+    /// Default maximum number of iterations is EM::DEFAULT_MAX_ITERS=100.
+    /// </summary>
+    public TermCriteria TermCriteria
+    {
+        get
+        {
+            NativeMethods.HandleException(
+                NativeMethods.ml_EM_getTermCriteria(Handle, out var ret));
+            return ret;
+        }
+        set
+        {
+            NativeMethods.HandleException(
+                NativeMethods.ml_EM_setTermCriteria(Handle, value));
+        }
+    }
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>
+    /// Returns weights of the mixtures.
+    /// Returns vector with the number of elements equal to the number of mixtures.
+    /// </summary>
+    /// <returns></returns>
+    public Mat GetWeights()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.ml_EM_getWeights(Handle, out var ret));
+        return new Mat(ret);
+    }
+
+    /// <summary>
+    /// Returns the cluster centers (means of the Gaussian mixture).
+    /// Returns matrix with the number of rows equal to the number of mixtures and 
+    /// number of columns equal to the space dimensionality.
+    /// </summary>
+    /// <returns></returns>
+    public Mat GetMeans()
+    {
+        ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.ml_EM_getMeans(Handle, out var ret));
+        return new Mat(ret);
+    }
+
+    /// <summary>
+    /// Returns covariation matrices.
+    /// Returns vector of covariation matrices. Number of matrices is the number of 
+    /// gaussian mixtures, each matrix is a square floating-point matrix NxN, where N is the space dimensionality.
+    /// </summary>
+    public Mat[] GetCovs()
+    {
+        ThrowIfDisposed();
+
+        using var vec = new VectorOfMat();
+        NativeMethods.HandleException(
+            NativeMethods.ml_EM_getCovs(Handle, vec.CvPtr));
+        return vec.ToArray();
+    }
+
+    /// <summary>
+    /// Estimate the Gaussian mixture parameters from a samples set.
+    /// </summary>
+    /// <param name="samples">Samples from which the Gaussian mixture model will be estimated. It should be a
+    /// one-channel matrix, each row of which is a sample. If the matrix does not have CV_64F type
+    /// it will be converted to the inner matrix of such type for the further computing.</param>
+    /// <param name="logLikelihoods">The optional output matrix that contains a likelihood logarithm value for
+    /// each sample. It has \f$nsamples \times 1\f$ size and CV_64FC1 type.</param>
+    /// <param name="labels">The optional output "class label" for each sample:
+    /// \f$\texttt{labels}_i=\texttt{arg max}_k(p_{i,k}), i=1..N\f$ (indices of the most probable
+    /// mixture component for each sample). It has \f$nsamples \times 1\f$ size and CV_32SC1 type.</param>
+    /// <param name="probs">The optional output matrix that contains posterior probabilities of each Gaussian
+    /// mixture component given the each sample. It has \f$nsamples \times nclusters\f$ size and CV_64FC1 type.</param>
+    /// <returns></returns>
+    // ReSharper disable once InconsistentNaming
+    public virtual bool TrainEM(
+        InputArray samples,
+        OutputArray logLikelihoods = default,
+        OutputArray labels = default,
+        OutputArray probs = default)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.ml_EM_trainEM(
+                Handle,
+                samples.Proxy,
+                logLikelihoods.Proxy,
+                labels.Proxy,
+                probs.Proxy,
+                out var ret));
+
+        GC.KeepAlive(samples.Source);
+        GC.KeepAlive(logLikelihoods.Source);
+        GC.KeepAlive(labels.Source);
+        GC.KeepAlive(probs.Source);
+        return ret != 0;
+    }
+
+    /// <summary>
+    /// Estimate the Gaussian mixture parameters from a samples set.
+    /// </summary>
+    /// <param name="samples">Samples from which the Gaussian mixture model will be estimated. It should be a
+    /// one-channel matrix, each row of which is a sample. If the matrix does not have CV_64F type
+    /// it will be converted to the inner matrix of such type for the further computing.</param>
+    /// <param name="means0">Initial means \f$a_k\f$ of mixture components. It is a one-channel matrix of
+    /// \f$nclusters \times dims\f$ size. If the matrix does not have CV_64F type it will be
+    /// converted to the inner matrix of such type for the further computing.</param>
+    /// <param name="covs0">The vector of initial covariance matrices \f$S_k\f$ of mixture components. Each of
+    /// covariance matrices is a one-channel matrix of \f$dims \times dims\f$ size. If the matrices
+    /// do not have CV_64F type they will be converted to the inner matrices of such type for the further computing.</param>
+    /// <param name="weights0">Initial weights \f$\pi_k\f$ of mixture components. It should be a one-channel
+    /// floating-point matrix with \f$1 \times nclusters\f$ or \f$nclusters \times 1\f$ size.</param>
+    /// <param name="logLikelihoods">The optional output matrix that contains a likelihood logarithm value for
+    /// each sample. It has \f$nsamples \times 1\f$ size and CV_64FC1 type.</param>
+    /// <param name="labels">The optional output "class label" for each sample:
+    /// \f$\texttt{labels}_i=\texttt{arg max}_k(p_{i,k}), i=1..N\f$ (indices of the most probable
+    /// mixture component for each sample). It has \f$nsamples \times 1\f$ size and CV_32SC1 type.</param>
+    /// <param name="probs">The optional output matrix that contains posterior probabilities of each Gaussian
+    /// mixture component given the each sample. It has \f$nsamples \times nclusters\f$ size and CV_64FC1 type.</param>
+    public virtual bool TrainE(
+        InputArray samples,
+        InputArray means0,
+        InputArray covs0 = default,
+        InputArray weights0 = default,
+        OutputArray logLikelihoods = default,
+        OutputArray labels = default,
+        OutputArray probs = default)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.ml_EM_trainE(
+                Handle,
+                samples.Proxy,
+                means0.Proxy,
+                covs0.Proxy,
+                weights0.Proxy,
+                logLikelihoods.Proxy,
+                labels.Proxy,
+                probs.Proxy,
+                out var ret));
+
+        GC.KeepAlive(samples.Source);
+        GC.KeepAlive(means0.Source);
+        GC.KeepAlive(covs0.Source);
+        GC.KeepAlive(weights0.Source);
+        GC.KeepAlive(logLikelihoods.Source);
+        GC.KeepAlive(labels.Source);
+        GC.KeepAlive(probs.Source);
+        return ret != 0;
+    }
+
+    /// <summary>
+    /// Estimate the Gaussian mixture parameters from a samples set.
+    /// </summary>
+    /// <param name="samples">Samples from which the Gaussian mixture model will be estimated. It should be a
+    /// one-channel matrix, each row of which is a sample. If the matrix does not have CV_64F type
+    /// it will be converted to the inner matrix of such type for the further computing.</param>
+    /// <param name="probs0">the probabilities</param>
+    /// <param name="logLikelihoods">The optional output matrix that contains a likelihood logarithm value for
+    /// each sample. It has \f$nsamples \times 1\f$ size and CV_64FC1 type.</param>
+    /// <param name="labels">The optional output "class label" for each sample:
+    /// \f$\texttt{labels}_i=\texttt{arg max}_k(p_{i,k}), i=1..N\f$ (indices of the most probable
+    /// mixture component for each sample). It has \f$nsamples \times 1\f$ size and CV_32SC1 type.</param>
+    /// <param name="probs">The optional output matrix that contains posterior probabilities of each Gaussian
+    /// mixture component given the each sample. It has \f$nsamples \times nclusters\f$ size and CV_64FC1 type.</param>
+    public virtual bool TrainM(
+        InputArray samples,
+        InputArray probs0,
+        OutputArray logLikelihoods = default,
+        OutputArray labels = default,
+        OutputArray probs = default)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.ml_EM_trainM(
+                Handle,
+                samples.Proxy,
+                probs0.Proxy,
+                logLikelihoods.Proxy,
+                labels.Proxy,
+                probs.Proxy, 
+                out var ret));
+
+        GC.KeepAlive(samples.Source);
+        GC.KeepAlive(probs0.Source);
+        GC.KeepAlive(logLikelihoods.Source);
+        GC.KeepAlive(labels.Source);
+        GC.KeepAlive(probs.Source);
+
+        return ret != 0;
+    }
+
+    /// <summary>
+    /// Predicts the response for sample
+    /// </summary>
+    /// <param name="sample">A sample for classification. It should be a one-channel matrix of
+    /// \f$1 \times dims\f$ or \f$dims \times 1\f$ size.</param>
+    /// <param name="probs">Optional output matrix that contains posterior probabilities of each component
+    /// given the sample. It has \f$1 \times nclusters\f$ size and CV_64FC1 type.</param>
+    public virtual Vec2d Predict2(InputArray sample, OutputArray probs = default)
+    {
+        ThrowIfDisposed();
+
+        NativeMethods.HandleException(
+            NativeMethods.ml_EM_predict2(Handle, sample.Proxy, probs.Proxy, out var ret));
+        GC.KeepAlive(sample.Source);
+        GC.KeepAlive(probs.Source);
+        return ret;
+    }
+
+    #endregion
+}
+
+#pragma warning disable CA1027 // Mark enums with FlagsAttribute
+
+/// <summary>
+/// Type of covariation matrices
+/// </summary>
+public enum EMTypes
+{
+    /// <summary>
+    /// A scaled identity matrix \f$\mu_k * I\f$. 
+    /// There is the only parameter \f$\mu_k\f$ to be estimated for each matrix. 
+    /// The option may be used in special cases, when the constraint is relevant, 
+    /// or as a first step in the optimization (for example in case when the data is 
+    /// preprocessed with PCA). The results of such preliminary estimation may be 
+    /// passed again to the optimization procedure, this time with covMatType=EM::COV_MAT_DIAGONAL.
+    /// </summary>
+    CovMatSpherical = 0,
+
+    /// <summary>
+    /// A diagonal matrix with positive diagonal elements. 
+    /// The number of free parameters is d for each matrix. 
+    /// This is most commonly used option yielding good estimation results. 
+    /// </summary>
+    CovMatDiagonal = 1,
+
+    /// <summary>
+    /// A symmetric positively defined matrix. The number of free parameters in each 
+    /// matrix is about \f$d^2/2\f$. It is not recommended to use this option, unless 
+    /// there is pretty accurate initial estimation of the parameters and/or a huge number 
+    /// of training samples.
+    /// </summary>
+    CovMatGeneric = 2,
+
+    /// <summary>
+    /// 
+    /// </summary>
+    CovMatDefault = CovMatSpherical,
+}
+
+/// <summary>
+/// The initial step the algorithm starts from
+/// </summary>
+public enum EMStartStep
+{
+    /// <summary>
+    /// The algorithm starts with E-step. 
+    /// At least, the initial values of mean vectors, CvEMParams.Means must be passed. 
+    /// Optionally, the user may also provide initial values for weights (CvEMParams.Weights) 
+    /// and/or covariation matrices (CvEMParams.Covs).
+    /// [CvEM::START_E_STEP]
+    /// </summary>
+    E = 1,
+
+    /// <summary>
+    /// The algorithm starts with M-step. The initial probabilities p_i,k must be provided.
+    /// [CvEM::START_M_STEP]
+    /// </summary>
+    M = 2,
+
+    /// <summary>
+    /// No values are required from the user, k-means algorithm is used to estimate initial mixtures parameters. 
+    /// [CvEM::START_AUTO_STEP]
+    /// </summary>
+    Auto = 0,
+}

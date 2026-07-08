@@ -1,0 +1,76 @@
+using System.Collections.Generic;
+using System.Linq;
+using CodeBrix.VideoProcessing.OpenCV5.Internal.Util;
+
+namespace CodeBrix.VideoProcessing.OpenCV5.Internal.Vectors; //was previously: OpenCvSharp.Internal.Vectors;
+
+/// <summary> 
+/// </summary>
+// ReSharper disable once InconsistentNaming
+public class VectorOfVectorPoint2f : CvObject, IStdVector<Point2f[]>
+{
+    /// <summary>
+    /// Constructor
+    /// </summary>
+    public VectorOfVectorPoint2f()
+    {
+        var p = NativeMethods.vector_vector_Point2f_new1();
+        SetSafeHandle(new OpenCvPtrSafeHandle(p, ownsHandle: false, releaseAction: null));
+    }
+        
+    /// <summary>
+    /// Releases unmanaged resources
+    /// </summary>
+    protected override void DisposeUnmanaged()
+    {
+        NativeMethods.vector_vector_Point2f_delete(CvPtr);
+        base.DisposeUnmanaged();
+    }
+
+    /// <summary>
+    /// vector.size()
+    /// </summary>
+    public int GetSize1()
+    {
+        var res = NativeMethods.vector_vector_Point2f_getSize1(Handle);
+        return (int)res;
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    public int Size => GetSize1();
+
+    /// <summary>
+    /// vector[i].size()
+    /// </summary>
+    public IReadOnlyList<long> GetSize2()
+    {
+        var size1 = GetSize1();
+        var size2 = new nuint[size1];
+        NativeMethods.vector_vector_Point2f_getSize2(Handle, size2);
+        return size2.Select(s => (long)s).ToArray();
+    }
+
+    /// <summary>
+    /// Converts std::vector to managed array
+    /// </summary>
+    /// <returns></returns>
+    public Point2f[][] ToArray()
+    {
+        var size1 = GetSize1();
+        if (size1 == 0)
+            return [];
+        var size2 = GetSize2();
+
+        var ret = new Point2f[size1][];
+        for (var i = 0; i < size1; i++)
+        {
+            ret[i] = new Point2f[size2[i]];
+        }
+
+        using var retPtr = new ArrayAddress2<Point2f>(ret);
+        NativeMethods.vector_vector_Point2f_copy(Handle, retPtr.GetPointer());
+        return ret;
+    }
+}

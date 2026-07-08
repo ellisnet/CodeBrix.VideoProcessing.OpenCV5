@@ -1,0 +1,56 @@
+using System;
+using CodeBrix.VideoProcessing.OpenCV5.Internal;
+
+namespace CodeBrix.VideoProcessing.OpenCV5; //was previously: OpenCvSharp;
+
+/// <summary>
+/// Base abstract class for the long-term tracker
+/// </summary>
+public abstract class Tracker : Algorithm
+{
+    /// <inheritdoc />
+    protected Tracker(IntPtr smartPtr, IntPtr rawPtr, Action<IntPtr> release)
+        : base(smartPtr, rawPtr, release) { }
+
+    /// <summary>
+    /// Initialize the tracker with a know bounding box that surrounding the target
+    /// </summary>
+    /// <param name="image">The initial frame</param>
+    /// <param name="boundingBox">The initial bounding box</param>
+    /// <returns></returns>
+    public void Init(Mat image, Rect boundingBox)
+    {
+        ThrowIfDisposed();
+
+        if (image is null)
+            throw new ArgumentNullException(nameof(image));
+
+        image.ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.video_Tracker_init(Handle, image.CvPtr, boundingBox));
+        GC.KeepAlive(image);
+    }
+
+    /// <summary>
+    /// Update the tracker, find the new most likely bounding box for the target
+    /// </summary>
+    /// <param name="image">The current frame</param>
+    /// <param name="boundingBox">The bounding box that represent the new target location, if true was returned, not modified otherwise</param>
+    /// <returns>True means that target was located and false means that tracker cannot locate target in 
+    /// current frame.Note, that latter *does not* imply that tracker has failed, maybe target is indeed 
+    /// missing from the frame (say, out of sight)</returns>
+    public bool Update(Mat image, ref Rect boundingBox)
+    {
+        ThrowIfDisposed();
+
+        if (image is null)
+            throw new ArgumentNullException(nameof(image));
+
+        image.ThrowIfDisposed();
+        NativeMethods.HandleException(
+            NativeMethods.video_Tracker_update(Handle, image.CvPtr, ref boundingBox, out var ret));
+        GC.KeepAlive(image);
+
+        return ret != 0;
+    }
+}
