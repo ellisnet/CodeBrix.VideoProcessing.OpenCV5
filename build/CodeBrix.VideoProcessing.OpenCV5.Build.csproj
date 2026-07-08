@@ -114,16 +114,27 @@
 		<Message Importance="high" Text="CodeBrix pack: version $(BuildVersion) -> $(_PackOutputDir)" />
 
 		<!-- Linux/macOS run: the 6 native runtime packages (nuspec-driven, via
-		     the SDK packer through the shim) plus the managed core package. -->
+		     the SDK packer through the shim) plus the managed core package.
+
+		     -p:GeneratePackageOnBuild=false on the csproj packs is REQUIRED:
+		     the packable csprojs set GeneratePackageOnBuild=true, and with that
+		     property on, an explicit `dotnet pack` does NOT run Build first
+		     (NuGet packs whatever stale assembly sits in bin/Release — on
+		     2026-07-07 this shipped a dll stamped with an older BuildVersion
+		     inside a newer package). Forcing it false restores the normal
+		     pack-depends-on-build flow, so the assembly is recompiled with
+		     THIS run's $(BuildVersion). -->
 		<Exec Condition="'$(OS)' != 'Windows_NT'"
 		      Command="dotnet pack &quot;$(_PackShim)&quot; -p:CbxNuspec=&quot;%(_Nuspec.Identity)&quot; -p:CbxNuspecBasePath=&quot;$(_NuspecDir)&quot; -p:CbxVersion=$(BuildVersion) -p:CbxBranch=$(_GitBranch) -p:CbxCommit=$(_GitCommit) --output &quot;$(_PackOutputDir)&quot; --nologo --verbosity minimal" />
 		<Exec Condition="'$(OS)' != 'Windows_NT'"
-		      Command="dotnet pack &quot;$(_RepoRoot)src\CodeBrix.VideoProcessing.OpenCV5\CodeBrix.VideoProcessing.OpenCV5.csproj&quot; -c Release -p:BuildVersion=$(BuildVersion) --output &quot;$(_PackOutputDir)&quot; --nologo --verbosity minimal" />
+		      Command="dotnet pack &quot;$(_RepoRoot)src\CodeBrix.VideoProcessing.OpenCV5\CodeBrix.VideoProcessing.OpenCV5.csproj&quot; -c Release -p:BuildVersion=$(BuildVersion) -p:GeneratePackageOnBuild=false --output &quot;$(_PackOutputDir)&quot; --nologo --verbosity minimal" />
 
 		<!-- Windows run: ONLY the .Wpf package (needs UseWPF; pin the version
-		     with -p:BuildVersion so it joins the Linux run's version-locked set). -->
+		     with -p:BuildVersion so it joins the Linux run's version-locked set).
+		     -p:GeneratePackageOnBuild=false for the same stale-dll reason as the
+		     core pack above (.Wpf sets GeneratePackageOnBuild=true on Windows). -->
 		<Exec Condition="'$(OS)' == 'Windows_NT'"
-		      Command="dotnet pack &quot;$(_RepoRoot)src\CodeBrix.VideoProcessing.OpenCV5.Wpf\CodeBrix.VideoProcessing.OpenCV5.Wpf.csproj&quot; -c Release -p:BuildVersion=$(BuildVersion) --output &quot;$(_PackOutputDir)&quot; --nologo --verbosity minimal" />
+		      Command="dotnet pack &quot;$(_RepoRoot)src\CodeBrix.VideoProcessing.OpenCV5.Wpf\CodeBrix.VideoProcessing.OpenCV5.Wpf.csproj&quot; -c Release -p:BuildVersion=$(BuildVersion) -p:GeneratePackageOnBuild=false --output &quot;$(_PackOutputDir)&quot; --nologo --verbosity minimal" />
 
 	</Target>
 

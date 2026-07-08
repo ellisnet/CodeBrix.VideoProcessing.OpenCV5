@@ -154,6 +154,23 @@ Mirrors the CodeBrix.Platform pack-only driver pattern:
 
   Family rule: ALL family packages publish at one version in one event.
 
+  STALE-DLL HAZARD (hit on 2026-07-07; driver now guards against it):
+    The packable csprojs (core and .Wpf) set GeneratePackageOnBuild=true.
+    Known NuGet quirk: with that property on, an explicit `dotnet pack`
+    SKIPS the Build dependency and packs whatever stale assembly sits in
+    bin/Release — the first driver run shipped a dll stamped 1.0.188.908
+    (and an older commit hash) inside the 1.0.189.394 core package. The
+    driver's csproj-pack Exec lines therefore pass
+    -p:GeneratePackageOnBuild=false, which restores the normal
+    pack-depends-on-build flow; do NOT remove that flag, and add it to any
+    new csproj-pack Exec added to the driver. The six nuspec-shim runtime
+    packages contain no compiled assembly and are unaffected.
+    AFTER EVERY PACK RUN, verify the packed dll matches the package version
+    and current HEAD (expect <version>+<git HEAD sha>):
+        unzip -p nugets/Release/<ver>/CodeBrix.VideoProcessing.OpenCV5.ApacheLicenseForever.<ver>.nupkg \
+          lib/net10.0/CodeBrix.VideoProcessing.OpenCV5.dll | strings -e l | grep -E '^1\.0\.[0-9]+\.[0-9]+\+'
+    (On the Windows .Wpf run, check the .Wpf dll the same way.)
+
   Windows .Wpf pack does NOT need any materialized native .dll: the Windows run
       dotnet build build\CodeBrix.VideoProcessing.OpenCV5.Build.csproj -c Release -p:BuildVersion=1.x.y.z
   packs ONLY the .Wpf package, and needs no OpenCvSharpExtern.dll (or any raw
