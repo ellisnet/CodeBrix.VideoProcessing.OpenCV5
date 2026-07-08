@@ -1,7 +1,7 @@
+using System;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using CodeBrix.VideoProcessing.OpenCV5.Wpf;
 using Xunit;
 
 namespace CodeBrix.VideoProcessing.OpenCV5.Wpf.Tests; //was previously: OpenCvSharp.Tests.Windows;
