@@ -154,6 +154,18 @@ Mirrors the CodeBrix.Platform pack-only driver pattern:
 
   Family rule: ALL family packages publish at one version in one event.
 
+  Windows .Wpf pack does NOT need any materialized native .dll: the Windows run
+      dotnet build build\CodeBrix.VideoProcessing.OpenCV5.Build.csproj -c Release -p:BuildVersion=1.x.y.z
+  packs ONLY the .Wpf package, and needs no OpenCvSharpExtern.dll (or any raw
+  native) to do so. Three reasons: (1) MaterializeNatives is skipped on Windows
+  (it is non-Windows-gated), (2) the build driver never references the test
+  projects, and (3) packing .Wpf only COMPILES the managed WPF assembly against
+  the managed core — OpenCvSharpExtern is a RUNTIME dependency, not a build-time
+  one, and the .Wpf package ships no natives. So the DLLs materialized for the
+  Windows test runs (see RUNNING THE TESTS ON WINDOWS above) — under
+  native_libraries/ and the tests/ staging/bin folders — can be deleted with
+  ZERO effect on the .Wpf pack. (They are only needed to RUN the tests.)
+
 CODING CONVENTIONS (CodeBrix family)
 ------------------------------------
 - TargetFramework net10.0 ONLY (exceptions below); no multi-targeting
@@ -224,6 +236,79 @@ tests/CodeBrix.VideoProcessing.OpenCV5.Wpf.Tests/  Windows-only (empty
   assembly on Linux, like the .Wpf library itself).
 
     dotnet test CodeBrix.VideoProcessing.OpenCV5.slnx
+
+RUNNING THE TESTS ON WINDOWS (native setup — REQUIRED)
+------------------------------------------------------
+On Windows, the native OpenCvSharpExtern library is NOT materialized or copied
+to the test output automatically. Without the steps below, every test that
+touches native code fails at first `new Mat(...)` with:
+
+    System.TypeInitializationException: The type initializer for
+    '...Internal.NativeMethods' threw an exception.
+      ---> System.DllNotFoundException: Unable to load DLL
+      'OpenCvSharpExtern' or one of its dependencies (0x8007007E)
+
+WHY IT DOES NOT "just work" on Windows (three separate reasons):
+  1. The pack driver's MaterializeNatives target (which runs `xz -dkf` to
+     decompress the vendored natives) is gated Condition="'$(OS)' != 'Windows_NT'"
+     in build/CodeBrix.VideoProcessing.OpenCV5.Build.csproj — it only runs on
+     Linux/macOS. On Windows the .dll.xz files are never decompressed.
+  2. The .Tests project copies raw DLLs to its output only from a `dll/`
+     subfolder (the `<None Update="dll\**\*.dll">` rule in the csproj), and that
+     folder does NOT exist in the repo — it is deliberately untracked (the raw
+     natives exceed GitHub's 100 MiB blob limit; see native_libraries/.gitignore).
+  3. The .Wpf.Tests project has NO such copy rule at all, so even a populated
+     `dll/` folder in the .Tests project does not reach the .Wpf.Tests output.
+
+The natives you need are vendored, xz-compressed, at:
+    native_libraries/runtimes/win-x64/native/OpenCvSharpExtern.dll.xz
+    native_libraries/runtimes/win-x64/native/opencv_videoio_ffmpeg500_64.dll.xz
+(win-arm64 has its own OpenCvSharpExtern.dll.xz; use it instead on ARM64.)
+`xz` ships with Git for Windows at /mingw64/bin/xz (i.e. on PATH in Git Bash).
+
+SETUP (Git Bash; from the repo root). Step A decompresses, step B verifies the
+bytes against the committed manifest, step C stages them so the tests find them:
+
+  # A) Materialize the raw DLLs in place (-k keeps the .xz, -f overwrites stale)
+  cd native_libraries/runtimes/win-x64/native
+  xz -dkf OpenCvSharpExtern.dll.xz
+  xz -dkf opencv_videoio_ffmpeg500_64.dll.xz
+  cd -
+
+  # B) Verify (optional but recommended). SHA256SUMS.txt has CRLF line endings,
+  #    so strip CR before feeding it to sha256sum:
+  cd native_libraries
+  tr -d '\r' < SHA256SUMS.txt | grep win-x64 | sha256sum -c -
+  cd -
+  #    Expect: both win-x64 paths report ": OK".
+
+  # C) Stage the two DLLs where the runtime's default DLL probing will find
+  #    them. The binding sets [DefaultDllImportSearchPaths(LegacyBehavior)], so
+  #    the app (test) output directory and PATH are both searched. Copy the two
+  #    DLLs next to EACH native-dependent test binary:
+  SRC=native_libraries/runtimes/win-x64/native
+  cp "$SRC/OpenCvSharpExtern.dll" "$SRC/opencv_videoio_ffmpeg500_64.dll" \
+     tests/CodeBrix.VideoProcessing.OpenCV5.Tests/bin/Debug/net10.0/
+  cp "$SRC/OpenCvSharpExtern.dll" "$SRC/opencv_videoio_ffmpeg500_64.dll" \
+     tests/CodeBrix.VideoProcessing.OpenCV5.Wpf.Tests/bin/Debug/net10.0-windows/
+
+(CodeBrix.VideoProcessing.OpenCV5.Analyzers.Tests needs no native library.)
+
+SURVIVING A REBUILD:
+  A direct copy into bin/ (step C) is wiped by a full Rebuild/Clean. To make the
+  ported .Tests suite self-sufficient, instead create the tracked-by-csproj
+  staging folder and drop the DLLs there — the existing `dll\**\*.dll` copy rule
+  then re-stages them on every build:
+      mkdir -p tests/CodeBrix.VideoProcessing.OpenCV5.Tests/dll
+      cp "$SRC/OpenCvSharpExtern.dll" "$SRC/opencv_videoio_ffmpeg500_64.dll" \
+         tests/CodeBrix.VideoProcessing.OpenCV5.Tests/dll/
+  The .Wpf.Tests project has no such rule, so its bin/ copy from step C must be
+  redone after any Rebuild (or add an equivalent copy rule to its csproj).
+
+DO NOT COMMIT the decompressed .dll files or the `dll/` staging folder contents —
+they are large native binaries kept out of git on purpose (see reason 2 above).
+Verified 2026-07-07: with the DLLs staged as above, all three .Tests projects
+pass on Windows (net10.0 / net10.0-windows, x64).
 
 UPSTREAM / PROVENANCE
 ---------------------
