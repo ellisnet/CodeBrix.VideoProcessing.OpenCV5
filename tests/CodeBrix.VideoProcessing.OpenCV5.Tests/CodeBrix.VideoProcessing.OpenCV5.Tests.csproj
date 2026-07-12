@@ -34,7 +34,15 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Xunit.StaFact" Version="3.0.13" />
+    <!-- PrivateAssets=all keeps StaFact from flowing transitively to projects
+         that reference this one. It ships only Windows-desktop TFM assets (which
+         carry a Microsoft.WindowsDesktop.App framework reference); leaking it
+         into the net10.0-windows .Wpf.Tests project made that project fail to
+         build on non-Windows with NETSDK1073. .Wpf.Tests declares its own
+         Windows-only StaFact reference for its WPF tests. -->
+    <PackageReference Include="Xunit.StaFact" Version="3.0.13">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="xunit.v3" Version="3.2.2" />
     <PackageReference Include="coverlet.collector" Version="10.0.1">
       <PrivateAssets>all</PrivateAssets>
