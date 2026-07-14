@@ -87,6 +87,18 @@ changed), so upstream OpenCvSharp documentation and samples apply directly.
     wraps native memory — ALWAYS dispose (use `using`). Mat.Row/Mat.Col
     return new Mat instances that must also be disposed (analyzer OCVS004
     reports violations).
+    Managed-array interop (see also USING THE DNN MODULE below):
+      Mat.FromPixelData(rows, cols, type, Array data[, step])   - wrap/copy a
+        managed array into a Mat (N-dim `sizes` overloads also exist); this
+        is the supported replacement for the deprecated pixel-data ctor.
+      mat.GetArray<T>(out T[]) / GetRectangularArray<T>(out T[,])  - typed
+        copies out of a TWO-dimensional Mat (they size the result from
+        Rows x Cols, which are -1 when Dims > 2 — so they cannot read DNN
+        output tensors).
+      mat.ToArray<T>()   - CodeBrix addition (Mat.CodeBrix.cs): copies a
+        continuous Mat of ANY dimensionality out in row-major order; T is
+        the per-channel primitive (float for CV_32F...) or a whole-element
+        Vec struct. THE way to read N-dimensional DNN outputs.
 
   VideoCapture / VideoWriter
     Camera / video-file capture and encoding (videoio module).
@@ -109,9 +121,101 @@ changed), so upstream OpenCvSharp documentation and samples apply directly.
     OCVS004  Mat.Row/Col result never disposed
   Do NOT rename these diagnostic IDs.
 
+  Dnn module (CodeBrix.VideoProcessing.OpenCV5.Dnn):
+    Cv2.Dnn.ReadNetFrom{Onnx,Tensorflow,Caffe,Darknet,TFLite,...} -> Net
+    Cv2.Dnn.BlobFromImage(...) -> 4D input blob; net.SetInput(blob);
+    net.Forward([name]) -> Mat
+    net.ForwardAll(params string[] names) -> Mat[]   - CodeBrix addition
+      (NetExtensions.cs): reads MULTIPLE named layer outputs reliably; see
+      "The multi-output Forward trap" in USING THE DNN MODULE below.
+
   WPF (CodeBrix.VideoProcessing.OpenCV5.Wpf package):
     BitmapSourceConverter.ToBitmapSource(Mat) / ToMat(BitmapSource, Mat)
     WriteableBitmapConverter.ToWriteableBitmap(Mat) / ToMat(...)
+
+USING THE DNN MODULE (TFLITE MODELS, MULTI-OUTPUT NETS, TENSOR ACCESS)
+----------------------------------------------------------------------
+Lessons learned building the WebcamPainter sample (CodeBrix.Samples repo),
+which runs Google MediaPipe hand-tracking TFLite models through this
+library's DNN module in real time. That sample is the reference for the
+whole recipe (webcam frames -> palm detection -> hand landmarks -> gesture
+classification); the pitfalls and patterns below are general.
+
+TFLite import - what works:
+  The vendored natives are built WITH the TFLite importer (flatbuffers), so
+  Cv2.Dnn.ReadNetFromTFLite(path | byte[] | stream) works out of the box.
+  OpenCV's TFLite OPERATOR coverage is partial, though, and unsupported
+  operators throw at LOAD time ("Unsupported operator type XYZ in function
+  'populateNet'"). Empirically, for the MediaPipe model family (extracted
+  from Google's .task bundles - which are just ZIP archives of .tflite
+  files):
+    LOADS AND RUNS: hand_detector.tflite (palm detection, 192x192 in,
+      2016-anchor SSD out), hand_landmarks_detector.tflite (224x224 in,
+      21 landmarks out), pose_landmarks_detector.tflite
+    FAILS TO LOAD:  gesture_embedder.tflite (GATHER operator),
+      pose_detector.tflite (DENSIFY operator)
+  Consequence: the canned MediaPipe gesture classifier and the BlazePose
+  pipeline cannot run here today; hand landmarks CAN, and simple gestures
+  (open palm, fist, pointing) classify perfectly well geometrically from
+  the 21 landmarks - see the WebcamPainter sample's OpenPalmClassifier.
+  Implementing GATHER/DENSIFY (likely upstream) would unlock the rest.
+
+The multi-output Forward trap (and net.ForwardAll):
+  Net.Forward(outputBlobs, outBlobNames) - the multi-output overload -
+  requires the requested names to exactly match the net's REGISTERED
+  unconnected outputs (native check "outnames.size() == noutputs"). The
+  TFLite importer registers only ONE output, so for multi-output TFLite
+  models that overload always throws. MediaPipe's palm detector is the
+  classic case: box regressors in "Identity" [1x2016x18] and anchor scores
+  in "Identity_1" [1x2016x1]. Read such models with the CodeBrix extension:
+      net.SetInput(blob);
+      var outputs = net.ForwardAll("Identity", "Identity_1");
+  ForwardAll issues sequential single-name Forward calls; with an unchanged
+  input, OpenCV reuses the already-computed layers, so the extra outputs
+  are close to free (measured: both palm-detector outputs in ~12 ms warm on
+  a desktop CPU, essentially the single-output cost). Dispose every
+  returned Mat. To DISCOVER a model's output names, probe candidate names
+  with single Forward(name) calls ("Identity", "Identity_1", ...) or list
+  net.GetLayerNames() / net.GetUnconnectedOutLayersNames().
+
+Reading output tensors (N-dimensional Mats):
+  DNN outputs are usually N-dimensional (e.g. [1 x 2016 x 18], Dims = 3).
+  GetArray<T> CANNOT read them (it sizes from Rows x Cols, both -1 when
+  Dims > 2). Use the CodeBrix helper:
+      float[] scores = outputMat.ToArray<float>();   //row-major copy
+  and index it manually (anchor a, field k of 18: scores[a * 18 + k]).
+
+Feeding frames in (managed pixels -> blob):
+  Wrap or copy managed pixels with Mat.FromPixelData - e.g. a webcam
+  frame's tightly packed BGRA bytes:
+      using var bgra = Mat.FromPixelData(height, width, MatType.CV_8UC4, pixelBytes);
+      using var bgr = new Mat();
+      Cv2.CvtColor(bgra, bgr, ColorConversionCodes.BGRA2BGR);
+      using var blob = Cv2.Dnn.BlobFromImage(bgr, 1.0 / 255, new Size(192, 192),
+          new Scalar(0, 0, 0), swapRB: true, crop: false);
+      net.SetInput(blob);
+  BlobFromImage accepts 1- and 3-channel inputs (not 4-channel) - hence the
+  BGRA2BGR conversion. swapRB: true feeds RGB, which the MediaPipe models
+  (and most TFLite models) expect. Letterbox (aspect-preserving pad) before
+  BlobFromImage when the model assumes it - MediaPipe's detectors do; plain
+  BlobFromImage stretching degrades their accuracy noticeably.
+
+Model-output activation gotcha (cost a real debugging session):
+  Do not assume every "score" output is a logit. In the MediaPipe hand
+  bundle, the palm DETECTOR's anchor scores ARE logits (apply sigmoid), but
+  the LANDMARK model's hand-presence output is ALREADY a probability
+  (~1.0 with a hand, ~0.002 on a blank crop) - applying sigmoid squashes it
+  uselessly toward 0.5-0.73. When wiring a new model, probe outputs with a
+  real positive AND a blank/negative input and check which interpretation
+  separates them.
+
+Real-time pipeline shape (see WebcamPainter.Vision for the full version):
+  One worker thread owns the Net objects (they are not thread-safe); frames
+  arrive via a single latest-wins pending slot (submitting overwrites the
+  previous pending frame), so slow inference drops stale frames instead of
+  queueing. Reuse Mats across frames (allocate on size change only). The
+  bundled analyzers (OCVS001-004) flag the per-frame P/Invoke and disposal
+  mistakes that creep into exactly this kind of loop.
 
 NATIVE LIBRARIES
 ----------------
