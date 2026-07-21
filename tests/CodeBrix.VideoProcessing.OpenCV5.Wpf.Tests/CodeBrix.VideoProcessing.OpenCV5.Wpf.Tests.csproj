@@ -45,10 +45,6 @@
          there anyway, so the package is Windows-only. -->
     <PackageReference Include="Xunit.StaFact" Version="3.0.13" Condition="'$(OS)' == 'Windows_NT'" />
     <PackageReference Include="xunit.v3" Version="3.2.2" />
-    <PackageReference Include="coverlet.collector" Version="10.0.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
   </ItemGroup>
 
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" Condition="'$(OS)' != 'Windows_NT'" />
