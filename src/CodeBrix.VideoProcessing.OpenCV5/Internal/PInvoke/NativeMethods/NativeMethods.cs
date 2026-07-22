@@ -64,7 +64,23 @@ public static partial class NativeMethods
         // default probing (the runtimes/{rid}/native/ layout produced by the
         // OpenCvSharp5.runtime.* packages). The P/Invoke below triggers the load and installs
         // the default error handler.
-        InstallDefaultErrorHandler();
+        //
+        // On failure, rethrow with a root-cause-first diagnostic (CodeBrix addition - see
+        // NativeLibraryLoadDiagnostics.cs): the runtime's own DllNotFoundException message buries
+        // the OS loader's real error (often a missing dependency OF the found library) in a
+        // list of per-probe "cannot open shared object file" lines.
+        try
+        {
+            InstallDefaultErrorHandler();
+        }
+        catch (DllNotFoundException e)
+        {
+            throw new OpenCvSharpException(NativeLibraryLoadDiagnostics.Build(), e);
+        }
+        catch (BadImageFormatException e)
+        {
+            throw new OpenCvSharpException(NativeLibraryLoadDiagnostics.Build(), e);
+        }
     }
 
     /// <summary>
@@ -97,7 +113,7 @@ public static partial class NativeMethods
         }
         catch (DllNotFoundException e)
         {
-            var exception = new OpenCvSharpException(e.Message, e);
+            var exception = new OpenCvSharpException(NativeLibraryLoadDiagnostics.Build(), e);
             try{Console.WriteLine(exception.Message); }
             // ReSharper disable once EmptyGeneralCatchClause
             catch { }
@@ -108,7 +124,7 @@ public static partial class NativeMethods
         }
         catch (BadImageFormatException e)
         {
-            var exception = new OpenCvSharpException(e.Message, e);
+            var exception = new OpenCvSharpException(NativeLibraryLoadDiagnostics.Build(), e);
             try { Console.WriteLine(exception.Message); }
             // ReSharper disable once EmptyGeneralCatchClause
             catch { }

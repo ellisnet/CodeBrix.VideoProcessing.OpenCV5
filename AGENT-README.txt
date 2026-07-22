@@ -219,6 +219,24 @@ Real-time pipeline shape (see WebcamPainter.Vision for the full version):
 
 NATIVE LIBRARIES
 ----------------
+Load-failure diagnostics (CodeBrix addition, 2026-07-22): when the native
+library fails to load, NativeMethods rethrows as OpenCvSharpException with a
+root-cause-first message built by Internal/NativeLibraryLoadDiagnostics.cs
+(the runtime's own DllNotFoundException buries the OS loader's real error in
+a wall of per-probe "cannot open shared object file" lines). The diagnostic
+distinguishes: file NOT FOUND in any probing directory (lists them; names the
+correct runtime package for the current RID), file FOUND but the loader
+rejected it (surfaces the loader's own error, which usually names a missing
+NATIVE DEPENDENCY of the library - e.g. an arm64 binary linked against
+Ubuntu's libtesseract.so.5/libjpeg.so.8/FFmpeg-6 sonames failing on Debian -
+plus a per-OS `ldd`/`otool -L`/`dumpbin /dependents` hint), FOUND but wrong
+CPU architecture, and FOUND-and-loads-fine (probing/deployment mismatch).
+The original runtime exception is preserved as InnerException. The class is
+deliberately NOT part of NativeMethods: touching any NativeMethods member
+runs its static constructor (which attempts the load), so the diagnostics
+must live where they can run without natives - tests in
+tests/.../NativeLoadDiagnosticsTests.cs rely on that.
+
 The managed core P/Invokes a single native library named "OpenCvSharpExtern"
 (libOpenCvSharpExtern.so / OpenCvSharpExtern.dll / libOpenCvSharpExtern.dylib)
 that statically links OpenCV 5 + contrib. The exact binaries upstream
@@ -237,6 +255,18 @@ under native_libraries/runtimes/{rid}/native/ with an .xz suffix
   - native_src/ holds the verbatim upstream C++ wrapper source and build
     scripts so natives COULD be self-built later; nothing in this repo
     builds them today.
+  - SELF-BUILD TOOLING (added 2026-07-22): tools/build_native_libraries/
+    builds portable libOpenCvSharpExtern.so for Linux x64/arm64/riscv64 with
+    the manylinux static-linking model (the recipe behind the shipped x64
+    binary), inside a container, from the vendored native_src/ wrapper source
+    and the pinned opencv/opencv_contrib revisions. Motivation: the shipped
+    upstream linux-arm64 binary is dynamically linked against Ubuntu 24.04
+    shared libraries (libtesseract.so.5, libjpeg.so.8, FFmpeg 6 sonames) and
+    fails to load on every Raspberry Pi OS / non-Ubuntu distro; a manylinux
+    arm64 rebuild fixes all of them at once, and riscv64 has no upstream
+    binary at all. See that folder's README.txt (usage, pins, verification,
+    and the artifact-adoption steps - adopting a self-built native supersedes
+    the "never rebuilt" clause above for that RID and must be recorded here).
   - The win-x64 package also ships opencv_videoio_ffmpeg500_64.dll (OpenCV's
     FFmpeg-based videoio plugin). FFmpeg is LGPL — see THIRD-PARTY-NOTICES.txt.
 
