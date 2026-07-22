@@ -63,6 +63,14 @@ else
 fi
 command -v cmake >/dev/null || { echo "ERROR: cmake not found in image." >&2; exit 1; }
 
+# vcpkg ships no prebuilt tool binaries for some architectures (riscv64 today);
+# on non-x64 hosts use the system cmake/ninja and build the vcpkg tool from
+# source (VCPKG_FORCE_SYSTEM_BINARIES is vcpkg's documented switch for this).
+# The x64 build stays byte-for-byte on the upstream recipe, which never set it.
+if [[ "$(uname -m)" != "x86_64" ]]; then
+    export VCPKG_FORCE_SYSTEM_BINARIES=1
+fi
+
 # ---------------------------------------------------------------------------
 # 2. vcpkg: image libs + Tesseract + Leptonica (static, release-only)
 # ---------------------------------------------------------------------------
