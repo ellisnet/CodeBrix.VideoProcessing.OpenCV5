@@ -1,10 +1,10 @@
+using CodeBrix.Compression.GZip;
+using CodeBrix.Compression.Tar;
+using CodeBrix.VideoProcessing.OpenCV5.Dnn;
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
-using CodeBrix.VideoProcessing.OpenCV5.Dnn;
-using ICSharpCode.SharpZipLib.GZip;
-using ICSharpCode.SharpZipLib.Tar;
 using Xunit;
 
 namespace CodeBrix.VideoProcessing.OpenCV5.Tests.Dnn; //was previously: OpenCvSharp.Tests.Dnn;

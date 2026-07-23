@@ -24,8 +24,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
-    <PackageReference Include="SharpZipLib" Version="1.4.2" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageReference Include="CodeBrix.Compression.MitLicenseForever" Version="1.0.198.139" />
     <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.660" />
     <PackageReference Include="SkiaSharp" Version="4.150.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.150.1" />
@@ -62,8 +62,7 @@
     (b) the vendored native folder is not on LD_LIBRARY_PATH. It ONLY warns —
     it never fails the build — and is completely silent once the variable is set.
   -->
-  <Target Name="_RemindNativeLibraryPath" BeforeTargets="Build"
-          Condition="'$(OS)' != 'Windows_NT'">
+  <Target Name="_RemindNativeLibraryPath" BeforeTargets="Build" Condition="'$(OS)' != 'Windows_NT'">
     <PropertyGroup>
       <_NativeLibDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../native_libraries/runtimes/linux-x64/native'))</_NativeLibDir>
       <_CurrentLdPath>$([System.Environment]::GetEnvironmentVariable('LD_LIBRARY_PATH'))</_CurrentLdPath>
@@ -71,14 +70,10 @@
     </PropertyGroup>
 
     <!-- (a) native not yet decompressed from its vendored .xz archive -->
-    <Warning Code="CVNATIVE01"
-             Condition="!Exists('$(_NativeLibDir)/libOpenCvSharpExtern.so')"
-             Text="OpenCvSharpExtern native library is not materialized — native tests will fail with DllNotFoundException. Decompress it first:  (cd &quot;$(_NativeLibDir)&quot; ; xz -dkf *.xz)   then set LD_LIBRARY_PATH (see the next warning / AGENT-README.txt TESTING)." />
+    <Warning Code="CVNATIVE01" Condition="!Exists('$(_NativeLibDir)/libOpenCvSharpExtern.so')" Text="OpenCvSharpExtern native library is not materialized — native tests will fail with DllNotFoundException. Decompress it first:  (cd &quot;$(_NativeLibDir)&quot; ; xz -dkf *.xz)   then set LD_LIBRARY_PATH (see the next warning / AGENT-README.txt TESTING)." />
 
     <!-- (b) materialized but not on the loader path: the classic 'why did dotnet test just fail?' case -->
-    <Warning Code="CVNATIVE02"
-             Condition="Exists('$(_NativeLibDir)/libOpenCvSharpExtern.so') and !$(_CurrentLdPath.Contains('$(_NativeLibDir)'))"
-             Text="OpenCvSharpExtern is not on LD_LIBRARY_PATH (currently: $(_CurrentLdPath)) — native tests will fail with DllNotFoundException. Run this, then re-run `dotnet test`:   export LD_LIBRARY_PATH=&quot;$(_NativeLibDir):$LD_LIBRARY_PATH&quot;   (see AGENT-README.txt TESTING)." />
+    <Warning Code="CVNATIVE02" Condition="Exists('$(_NativeLibDir)/libOpenCvSharpExtern.so') and !$(_CurrentLdPath.Contains('$(_NativeLibDir)'))" Text="OpenCvSharpExtern is not on LD_LIBRARY_PATH (currently: $(_CurrentLdPath)) — native tests will fail with DllNotFoundException. Run this, then re-run `dotnet test`:   export LD_LIBRARY_PATH=&quot;$(_NativeLibDir):$LD_LIBRARY_PATH&quot;   (see AGENT-README.txt TESTING)." />
   </Target>
 
 </Project>
