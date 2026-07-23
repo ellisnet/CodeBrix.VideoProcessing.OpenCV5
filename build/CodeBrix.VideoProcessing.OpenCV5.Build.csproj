@@ -7,12 +7,12 @@
 	Mirrors the CodeBrix.Platform pack-only driver pattern.
 
 	This project intentionally compiles nothing of value: its job is to
-	materialize + verify the vendored native libraries, pack the six runtime
+	materialize + verify the vendored native libraries, pack the seven runtime
 	packages from their nuspecs, and pack the managed core package — all with
 	ONE shared date-stamped $(BuildVersion), so a full run yields a
 	version-locked set.
 
-	Usage (Linux — packs core + the 6 runtime packages):
+	Usage (Linux — packs core + the 7 runtime packages):
 
 	    dotnet build build/CodeBrix.VideoProcessing.OpenCV5.Build.csproj -c Release
 
@@ -67,12 +67,13 @@
 		<_NativeDir>$(_RepoRoot)native_libraries</_NativeDir>
 	</PropertyGroup>
 
-	<!-- The six nuspec-driven native runtime packages (Linux pack run only). -->
+	<!-- The seven nuspec-driven native runtime packages (Linux pack run only). -->
 	<ItemGroup>
 		<_Nuspec Include="$(_NuspecDir)\CodeBrix.VideoProcessing.OpenCV5.WindowsX64.nuspec" />
 		<_Nuspec Include="$(_NuspecDir)\CodeBrix.VideoProcessing.OpenCV5.WindowsArm64.nuspec" />
 		<_Nuspec Include="$(_NuspecDir)\CodeBrix.VideoProcessing.OpenCV5.LinuxX64.nuspec" />
 		<_Nuspec Include="$(_NuspecDir)\CodeBrix.VideoProcessing.OpenCV5.LinuxArm64.nuspec" />
+		<_Nuspec Include="$(_NuspecDir)\CodeBrix.VideoProcessing.OpenCV5.LinuxRiscv64.nuspec" />
 		<_Nuspec Include="$(_NuspecDir)\CodeBrix.VideoProcessing.OpenCV5.MacOSX64.nuspec" />
 		<_Nuspec Include="$(_NuspecDir)\CodeBrix.VideoProcessing.OpenCV5.MacOSArm64.nuspec" />
 	</ItemGroup>
@@ -113,7 +114,7 @@
 
 		<Message Importance="high" Text="CodeBrix pack: version $(BuildVersion) -> $(_PackOutputDir)" />
 
-		<!-- Linux/macOS run: the 6 native runtime packages (nuspec-driven, via
+		<!-- Linux/macOS run: the 7 native runtime packages (nuspec-driven, via
 		     the SDK packer through the shim) plus the managed core package.
 
 		     -p:GeneratePackageOnBuild=false on the csproj packs is REQUIRED:

@@ -4,9 +4,11 @@ CodeBrix.VideoProcessing.OpenCV5 is a .NET binding for OpenCV 5 — image
 processing, video capture and analysis, camera calibration, object detection,
 machine learning, and the OpenCV contrib extra modules. It is a fork/port of
 the OpenCvSharp project (its OpenCvSharp5 package family) and additionally
-redistributes the exact native binary libraries that the upstream project
-published to NuGet. Everything incorporated from other projects is listed
-below.
+redistributes native binary libraries: for Windows and macOS, the exact
+binaries the upstream project published to NuGet; for Linux (x64, ARM64, and
+RISC-V 64), binaries built from source by this repository using the upstream
+project's vendored native sources (see item 2). Everything incorporated from
+other projects is listed below.
 
 Jeremy Ellis and contributors license the CodeBrix.VideoProcessing.OpenCV5
 project to you under the terms set forth in the LICENSE file, which is located
@@ -85,25 +87,10 @@ https://github.com/ellisnet/CodeBrix.VideoProcessing.OpenCV5/issues
      - NuGet packaging metadata, versioning scheme, icon, and readme were
        replaced with the CodeBrix family equivalents.
 
-2. OpenCvSharp5 native runtime binaries (OpenCV 5 + OpenCvSharpExtern)
+2. Native runtime binaries (OpenCV 5 + OpenCvSharpExtern)
 
-   The files stored xz-compressed under native_libraries/runtimes/ are the
-   EXACT binaries published by the upstream OpenCvSharp project in its NuGet
-   runtime packages, extracted unmodified from these upstream packages:
-
-     OpenCvSharp5.runtime.win                 5.0.0.20260703
-     OpenCvSharp5.runtime.win-arm64           5.0.0.20260703
-     OpenCvSharp5.official.runtime.linux-x64  5.0.0.20260703
-     OpenCvSharp5.runtime.linux-arm64         5.0.0.20260703
-     OpenCvSharp5.runtime.osx.x64             5.0.0.20260704
-     OpenCvSharp5.runtime.osx.arm64           5.0.0.20260704
-
-   Per-file SHA-256 hashes of the raw (uncompressed) binaries are recorded in
-   native_libraries/SHA256SUMS.txt; the pack step verifies them before any
-   package is produced. These binaries were captured once (2026-07-07) and are
-   never re-fetched from the upstream project or nuget.org.
-
-   The native libraries are builds of OpenCV and the OpenCV contrib modules
+   All files stored xz-compressed under native_libraries/runtimes/ are builds
+   of OpenCV and the OpenCV contrib modules
    (https://github.com/opencv/opencv, https://github.com/opencv/opencv_contrib):
 
    Copyright:  Copyright (C) 2000-2026, Intel Corporation, OpenCV Foundation,
@@ -111,18 +98,67 @@ https://github.com/ellisnet/CodeBrix.VideoProcessing.OpenCV5/issues
    License:    Apache License 2.0 (OpenCV 4.5+ / 5.x; full text below)
 
    together with the OpenCvSharpExtern C wrapper layer by shimat (Apache
-   License 2.0, see item 1).
+   License 2.0, see item 1). Their provenance differs by operating system:
 
-   NOTE — additional statically/dynamically linked components: as with the
-   official upstream OpenCV and OpenCvSharp binary distributions, these native
-   binaries embed OpenCV's bundled third-party components (e.g. libjpeg-turbo,
-   libpng, zlib, protobuf) under their respective permissive licenses, and
-   include FFmpeg-based video I/O support: on Windows as the separate
-   opencv_videoio_ffmpeg500_64.dll plugin, and in the Linux builds embedded
-   within libOpenCvSharpExtern.so. FFmpeg is licensed under the LGPL-2.1+
-   (see https://ffmpeg.org/legal.html). These are binary redistributions of
-   the unmodified upstream-published artifacts; consult the upstream OpenCV
-   project's 3rdparty documentation for the complete component inventory.
+   2a. WINDOWS and MACOS binaries (runtimes/win-x64, win-arm64, osx-x64,
+       osx-arm64): the EXACT binaries published by the upstream OpenCvSharp
+       project in its NuGet runtime packages, extracted unmodified from:
+
+         OpenCvSharp5.runtime.win                 5.0.0.20260703
+         OpenCvSharp5.runtime.win-arm64           5.0.0.20260703
+         OpenCvSharp5.runtime.osx.x64             5.0.0.20260704
+         OpenCvSharp5.runtime.osx.arm64           5.0.0.20260704
+
+       These binaries were captured once (2026-07-07) and are never
+       re-fetched from the upstream project or nuget.org. As unmodified
+       upstream binary redistributions, they embed OpenCV's bundled
+       third-party components (e.g. libjpeg-turbo, libpng, zlib, protobuf)
+       under their respective permissive licenses; the win-x64 package also
+       ships FFmpeg-based video I/O as the separate
+       opencv_videoio_ffmpeg500_64.dll plugin (FFmpeg is licensed under the
+       LGPL-2.1+, see https://ffmpeg.org/legal.html). Consult the upstream
+       OpenCV project's 3rdparty documentation for the complete component
+       inventory.
+
+   2b. LINUX binaries (runtimes/linux-x64, linux-arm64, linux-riscv64):
+       BUILT FROM SOURCE by this repository (first adopted 2026-07-22) with
+       the containerized tooling in tools/build_native_libraries/, following
+       the same "manylinux" static-linking model upstream used for its
+       linux-x64 binary. Inputs, all pinned in
+       tools/build_native_libraries/pins.env:
+
+         - the vendored OpenCvSharpExtern wrapper source (item 1)
+         - OpenCV and opencv_contrib at the exact revisions the upstream
+           binaries were built from (Apache License 2.0)
+         - FFmpeg 7.1.1, built from the unmodified ffmpeg.org source
+           release and STATICALLY LINKED into libOpenCvSharpExtern.so.
+           FFmpeg is licensed under the LGPL-2.1+
+           (https://ffmpeg.org/legal.html). The exact version, configure
+           flags, and build recipe are recorded in
+           tools/build_native_libraries/ (pins.env, container_build.sh),
+           allowing the FFmpeg component to be rebuilt and relinked from
+           source; FFmpeg source is available from https://ffmpeg.org/.
+         - image/OCR libraries built statically via vcpkg (manifest:
+           native_src/vcpkg.json; baseline pinned in pins.env):
+             libjpeg-turbo  (IJG / modified-BSD / zlib licenses)
+             libpng         (PNG Reference Library License)
+             libtiff        (libtiff/MIT-style license)
+             libwebp        (BSD-3-Clause)
+             zlib           (zlib license)
+             Tesseract OCR  (Apache License 2.0)
+             Leptonica      (Leptonica License, BSD-style)
+         - OpenCV's remaining bundled third-party components (e.g.
+           protobuf) under their respective permissive licenses, as in the
+           upstream builds.
+
+       Only universal system libraries (glibc, libstdc++, the GTK3 stack,
+       libX11) are linked dynamically. Per-build provenance — component
+       versions, container image, source revisions, SHA-256, and the
+       dynamic-dependency list — is recorded in each build's build-info.txt.
+
+   Per-file SHA-256 hashes of the raw (uncompressed) binaries for BOTH
+   provenance groups are recorded in native_libraries/SHA256SUMS.txt; the
+   pack step verifies them before any package is produced.
 
 ================================================================================
 

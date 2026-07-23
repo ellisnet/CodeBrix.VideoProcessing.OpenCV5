@@ -1,6 +1,6 @@
 # CodeBrix.VideoProcessing.OpenCV5
 
-A fully managed .NET binding for OpenCV 5, derived from the OpenCvSharp5 project, providing image processing, video capture/analysis, camera calibration, object detection, machine learning, and the OpenCV contrib extra modules to .NET applications on Windows, Linux, and macOS (x64 and ARM64).
+A fully managed .NET binding for OpenCV 5, derived from the OpenCvSharp5 project, providing image processing, video capture/analysis, camera calibration, object detection, machine learning, and the OpenCV contrib extra modules to .NET applications on Windows, Linux, and macOS (x64 and ARM64, plus RISC-V 64 on Linux).
 CodeBrix.VideoProcessing.OpenCV5 has no managed dependencies other than .NET, and is provided as a .NET 10 library and associated `CodeBrix.VideoProcessing.OpenCV5.ApacheLicenseForever` NuGet package, plus per-platform native binding packages (see below).
 
 CodeBrix.VideoProcessing.OpenCV5 supports applications and assemblies that target Microsoft .NET version 10.0 and later.
@@ -11,7 +11,7 @@ Please update your C#/.NET code and projects to the latest LTS version of Micros
 
 * The OpenCV 5 core, imgproc, imgcodecs, videoio, video, calib3d, features, flann, dnn, ml, objdetect, photo, stitching, and highgui modules via the `Cv2` static class and the `Mat` family of types
 * The OpenCV contrib extra modules: aruco, barcode, face, img_hash, line_descriptor, quality, saliency, shape, text, tracking, wechat_qrcode, xfeatures2d, ximgproc, xphoto, dnn_superres, and more
-* Windows x64 and ARM64, Linux x64 and ARM64, and macOS x64 and Apple Silicon via per-platform native runtime packages
+* Windows x64 and ARM64, Linux x64, ARM64, and RISC-V 64, and macOS x64 and Apple Silicon via per-platform native runtime packages
 * WPF interop (`Mat` ↔ `BitmapSource` / `WriteableBitmap`) via the `CodeBrix.VideoProcessing.OpenCV5.Wpf.ApacheLicenseForever` package
 * Built-in Roslyn analyzers that catch common `Mat` usage mistakes (undisposed `Row`/`Col` results, `Mat` property access in loop conditions) at compile time
 
@@ -25,10 +25,13 @@ Please update your C#/.NET code and projects to the latest LTS version of Micros
 | `CodeBrix.VideoProcessing.OpenCV5.WindowsArm64.ApacheLicenseForever` | Native binding for Windows ARM64 |
 | `CodeBrix.VideoProcessing.OpenCV5.LinuxX64.ApacheLicenseForever` | Native binding for Linux x64 |
 | `CodeBrix.VideoProcessing.OpenCV5.LinuxArm64.ApacheLicenseForever` | Native binding for Linux ARM64 |
+| `CodeBrix.VideoProcessing.OpenCV5.LinuxRiscv64.ApacheLicenseForever` | Native binding for Linux RISC-V 64 — usable today with experimental riscv64 .NET 10 SDK builds |
 | `CodeBrix.VideoProcessing.OpenCV5.MacOSX64.ApacheLicenseForever` | Native binding for macOS x64 |
 | `CodeBrix.VideoProcessing.OpenCV5.MacOSArm64.ApacheLicenseForever` | Native binding for macOS ARM64 (Apple Silicon) |
 
 Applications reference the core package plus the native runtime package(s) matching their target platform(s).
+
+The Linux native libraries are portable, statically-linked builds (the manylinux model): one binary per architecture that runs on effectively any modern glibc distribution — Debian, Ubuntu, Raspberry Pi OS, RHEL-family, and more (glibc 2.28+ for x64/ARM64; glibc 2.39+ for RISC-V 64).
 
 ## Sample Code
 

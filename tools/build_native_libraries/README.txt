@@ -90,7 +90,18 @@ BUILT-IN VERIFICATION (a build only succeeds if ALL of these pass)
     libwebp/libtesseract/liblept/libz - those must be inside the binary.
     This is exactly the defect the shipped arm64 binary has; the check makes
     it impossible to reproduce.
-  * C smoke test: links against the .so and calls core_Mat_sizeof()
+  * C smoke test: dlopen()s the .so and calls core_Mat_sizeof() via dlsym()
+    (exactly how .NET's NativeLibrary consumes it; a static link would
+    demand full up-front resolution and trip on the allowlisted reference
+    below)
+  * dangling-symbol allowlist: after the loader walks the full dependency
+    closure (ldd -r), the only unresolved symbols allowed are MLAS's
+    MlasHGemmSupported (latent OpenCV 5.0.0 DNN FP16/GQA reference,
+    implemented only in MLAS's ARM64 kernels; absent on arm64 builds since
+    they disable MLAS) and libtiff's two liblzma references
+    (lzma_lzma_preset, lzma_stream_encoder). The exact upstream-shipped
+    linux-x64 binary carries all three (verified 2026-07-22); all are
+    benign under lazy binding. Any OTHER dangling symbol fails the build
   * glibc-ceiling report (informational; recorded in build-info.txt)
 
 Recommended additional test on a real target machine: stage output/<rid>/
@@ -99,10 +110,11 @@ TESTS" sections) and run the ported test suite against it.
 
 ADOPTING A BUILT ARTIFACT INTO THE SHIPPED PACKAGES
 ---------------------------------------------------
-NOTE: native_libraries/ currently holds "the exact artifacts upstream
-published, never rebuilt" (AGENT-README.txt, decision 2026-07-07). Replacing
-one with a self-built binary supersedes that decision for the affected RID -
-record the change in AGENT-README.txt when you do it. Steps:
+NOTE: adoption happened 2026-07-22 for ALL THREE Linux RIDs - native_libraries/
+now holds self-built binaries for linux-x64/linux-arm64/linux-riscv64 (the
+2026-07-07 "exact upstream artifacts, never rebuilt" decision is SUPERSEDED for
+the Linux RIDs; it still governs win-*/osx-*, and the supersession is recorded
+in AGENT-README.txt NATIVE LIBRARIES). Steps, for future re-adoptions:
 
   1. xz -9e -k output/<rid>/libOpenCvSharpExtern.so
      mv output/<rid>/libOpenCvSharpExtern.so.xz \
@@ -113,12 +125,11 @@ record the change in AGENT-README.txt when you do it. Steps:
   3. Pack and publish per AGENT-README.txt "PACKAGING / BUILD DRIVER"
      (family rule: all packages publish at one version in one event).
 
-  For linux-riscv64 there is no runtime package yet: it needs a new
-  CodeBrix.VideoProcessing.OpenCV5.LinuxRiscV64.nuspec in build/nuget/ (copy
-  the LinuxArm64 one, adjust RID/description), a nuspec entry in the build
-  driver, and a runtimes/linux-riscv64/native/ folder under native_libraries/.
-  Also note: .NET itself does not yet ship official linux-riscv64 runtimes
-  (community/Ubuntu builds exist) - the native library is forward preparation.
+  The linux-riscv64 runtime package plumbing was added 2026-07-22:
+  CodeBrix.VideoProcessing.OpenCV5.LinuxRiscv64.nuspec in build/nuget/ (note
+  the casing - Riscv64, matching the LinuxArm64 pattern), its entry in the
+  build driver, and runtimes/linux-riscv64/native/ under native_libraries/.
+  The package is usable today with experimental riscv64 .NET 10 SDK builds.
 
 FILES
 -----

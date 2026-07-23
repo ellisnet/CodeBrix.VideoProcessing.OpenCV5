@@ -16,11 +16,14 @@ OpenCvSharp namespaces. Type names were NOT renamed — OpenCvSharpException,
 OpenCvSafeHandle, and the native library name "OpenCvSharpExtern" are
 retained from upstream.
 
-The repo produces EIGHT NuGet packages: the managed core (with bundled
-Roslyn analyzers), a WPF extensions package (Windows-only), and six native
+The repo produces NINE NuGet packages: the managed core (with bundled
+Roslyn analyzers), a WPF extensions package (Windows-only), and seven native
 runtime packages (one per OS/architecture pair). The native binaries are
-vendored in this repo xz-compressed; they are the exact artifacts upstream
-published (never rebuilt, never re-fetched — see NATIVE LIBRARIES below).
+vendored in this repo xz-compressed. The Windows and macOS binaries are the
+exact artifacts upstream published (never rebuilt, never re-fetched); the
+three Linux binaries (x64, ARM64, RISC-V 64) are SELF-BUILT from the
+vendored sources via tools/build_native_libraries/ (decided 2026-07-22 —
+see NATIVE LIBRARIES below).
 
 INSTALLATION
 ------------
@@ -35,8 +38,11 @@ A native runtime package matching the target platform is ALSO required:
     CodeBrix.VideoProcessing.OpenCV5.WindowsArm64.ApacheLicenseForever
     CodeBrix.VideoProcessing.OpenCV5.LinuxX64.ApacheLicenseForever
     CodeBrix.VideoProcessing.OpenCV5.LinuxArm64.ApacheLicenseForever
+    CodeBrix.VideoProcessing.OpenCV5.LinuxRiscv64.ApacheLicenseForever
     CodeBrix.VideoProcessing.OpenCV5.MacOSX64.ApacheLicenseForever
     CodeBrix.VideoProcessing.OpenCV5.MacOSArm64.ApacheLicenseForever
+
+(LinuxRiscv64 is usable today with experimental riscv64 .NET 10 SDK builds.)
 
 For WPF applications (Mat -> BitmapSource/WriteableBitmap conversion):
 
@@ -239,34 +245,48 @@ tests/.../NativeLoadDiagnosticsTests.cs rely on that.
 
 The managed core P/Invokes a single native library named "OpenCvSharpExtern"
 (libOpenCvSharpExtern.so / OpenCvSharpExtern.dll / libOpenCvSharpExtern.dylib)
-that statically links OpenCV 5 + contrib. The exact binaries upstream
-published (5.0.0.20260703; osx 5.0.0.20260704) are committed in this repo
-under native_libraries/runtimes/{rid}/native/ with an .xz suffix
+that statically links OpenCV 5 + contrib. All natives are committed in this
+repo under native_libraries/runtimes/{rid}/native/ with an .xz suffix
 (xz-compressed — the raw linux-x64 .so is 131 MB and the osx-x64 .dylib is
 127 MB, over GitHub's 100 MiB hard blob limit; NEVER commit the raw files —
-.gitignore enforces this).
+.gitignore enforces this). Provenance is split by OS:
 
+  - WINDOWS + MACOS (win-x64, win-arm64, osx-x64, osx-arm64): the exact
+    binaries upstream published (5.0.0.20260703; osx 5.0.0.20260704),
+    captured once on 2026-07-07 per that day's decision: NEVER pull anything
+    from the shimat/opencvsharp repo or nuget.org again. No fetch scripts.
+    The upstream runtime nupkgs are additionally preserved offline.
+  - LINUX (linux-x64, linux-arm64, linux-riscv64): SELF-BUILT 2026-07-22 by
+    tools/build_native_libraries/ (this SUPERSEDES the 2026-07-07
+    "never rebuilt" clause for the Linux RIDs only). Portable manylinux
+    static-linking model — built inside pinned manylinux containers from the
+    vendored native_src/ wrapper source and the exact opencv/opencv_contrib
+    revisions the upstream natives used; FFmpeg/Tesseract/Leptonica/codecs
+    statically linked, only universal system libraries (glibc, libstdc++,
+    GTK3 stack, libX11) remain dynamic. glibc ceiling 2.28 (x64/arm64;
+    Debian 10+/Ubuntu 20.04+/every 64-bit Raspberry Pi OS) and 2.39
+    (riscv64; Ubuntu 24.04+/Debian 13+). Motivation: the upstream
+    linux-arm64 binary was dynamically linked against Ubuntu 24.04 shared
+    libraries (libtesseract.so.5, libjpeg.so.8, FFmpeg 6 sonames) and failed
+    to load on every Raspberry Pi OS / non-Ubuntu distro; upstream shipped
+    no riscv64 binary at all; and self-building x64 keeps all three Linux
+    RIDs on one provenance. Full per-build provenance (pins, sha256, dynamic
+    deps, glibc ceiling) is recorded in each build's build-info.txt; see
+    tools/build_native_libraries/README.txt for the recipe, verification
+    gates (including the dangling-symbol allowlist lore: MlasHGemmSupported
+    + two liblzma refs, all carried by the shipped upstream binaries too),
+    and adoption steps. Validation status: linux-x64 passed the FULL ported
+    test suite on this repo (1254 pass / 31 skip, 2026-07-22); linux-arm64
+    verified by build gates + host checks, on-device suite run pending;
+    linux-riscv64 verified by build gates (2026-07-22; dlopen smoke +
+    forbidden-soname + allowlist + glibc ceiling 2.38), no riscv64 hardware
+    test yet.
   - native_libraries/SHA256SUMS.txt records the SHA-256 of every RAW
     (uncompressed) binary; the pack step verifies these and fails loudly on
     any mismatch.
-  - DECIDED 2026-07-07: one-time copy. NEVER pull anything from the
-    shimat/opencvsharp repo or nuget.org again. No fetch scripts. The
-    upstream runtime nupkgs are additionally preserved offline.
   - native_src/ holds the verbatim upstream C++ wrapper source and build
-    scripts so natives COULD be self-built later; nothing in this repo
-    builds them today.
-  - SELF-BUILD TOOLING (added 2026-07-22): tools/build_native_libraries/
-    builds portable libOpenCvSharpExtern.so for Linux x64/arm64/riscv64 with
-    the manylinux static-linking model (the recipe behind the shipped x64
-    binary), inside a container, from the vendored native_src/ wrapper source
-    and the pinned opencv/opencv_contrib revisions. Motivation: the shipped
-    upstream linux-arm64 binary is dynamically linked against Ubuntu 24.04
-    shared libraries (libtesseract.so.5, libjpeg.so.8, FFmpeg 6 sonames) and
-    fails to load on every Raspberry Pi OS / non-Ubuntu distro; a manylinux
-    arm64 rebuild fixes all of them at once, and riscv64 has no upstream
-    binary at all. See that folder's README.txt (usage, pins, verification,
-    and the artifact-adoption steps - adopting a self-built native supersedes
-    the "never rebuilt" clause above for that RID and must be recorded here).
+    scripts; tools/build_native_libraries/ consumes it for the Linux
+    self-builds. It remains reference-only for Windows/macOS.
   - The win-x64 package also ships opencv_videoio_ffmpeg500_64.dll (OpenCV's
     FFmpeg-based videoio plugin). FFmpeg is LGPL — see THIRD-PARTY-NOTICES.txt.
 
@@ -281,7 +301,7 @@ Mirrors the CodeBrix.Platform pack-only driver pattern:
       version, same pattern as CodeBrix.Platform's .MacOS package)
     - MaterializeNatives target: xz -dkf every native_libraries/**/*.xz in
       place, then verifies SHA256SUMS.txt and FAILS on mismatch
-    - packs the 6 runtime packages from build/nuget/*.nuspec via the
+    - packs the 7 runtime packages from build/nuget/*.nuspec via the
       build/nuget-pack-shim shim project
     - packs the core (and, on Windows, the .Wpf) package from the csproj
     - output: nugets/Release/{version}/
@@ -377,8 +397,15 @@ tests/CodeBrix.VideoProcessing.OpenCV5.Tests/  the ported upstream suite
   SilverAssertions), one folder per module, _data/ holds test images.
   Tests that exercise native code REQUIRE the linux-x64 native library to be
   materialized and locatable: run the MaterializeNatives target first, then
-  either copy the raw .so next to the test binary or set LD_LIBRARY_PATH to
-  native_libraries/runtimes/linux-x64/native/.
+  set LD_LIBRARY_PATH to native_libraries/runtimes/linux-x64/native/ (the
+  .Tests csproj emits warning CVNATIVE02 with the exact export line when it
+  is unset). NOTE (verified 2026-07-22): copying the raw .so into the test
+  bin/ directory does NOT work on Linux — the runtime's native probing for
+  this project skips the app directory (it probes the deps.json
+  runtimes/linux-x64/native/ subdir and the shared-framework dir, then falls
+  back to plain dlopen, which honors LD_LIBRARY_PATH). The copy-next-to-
+  binary approach documented for Windows below works there via PATH/app-dir
+  probing; on Linux use LD_LIBRARY_PATH.
   Some tests download DNN models from the network on first run (FileDownloader,
   guarded by ExplicitFact/ExplicitTheory attributes for the heavier cases).
 tests/CodeBrix.VideoProcessing.OpenCV5.Analyzers.Tests/  analyzer unit tests

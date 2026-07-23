@@ -44,7 +44,12 @@ if command -v dnf >/dev/null; then
     # manylinux_2_28 images (AlmaLinux 8). Same package set as the upstream
     # manylinux.yml "Install system tools" step; nasm/yasm are x86-only (FFmpeg
     # is built with --disable-asm, they are only configure-time conveniences).
-    PKGS=(git zip unzip pkg-config ninja-build kernel-headers
+    # The full "perl" metapackage is needed on manylinux_2_39 (Rocky Linux 10),
+    # which splits perl core modules into sub-packages far more than AlmaLinux 8
+    # does - without it, openssl's Configure (a vcpkg dependency of tesseract
+    # via libarchive) dies with "Can't locate FindBin.pm". Harmless on
+    # AlmaLinux 8, where those modules ship with the base perl already.
+    PKGS=(git zip unzip pkg-config ninja-build kernel-headers perl
           perl-IPC-Cmd perl-Time-Piece gtk3-devel curl xz)
     if [[ "$(uname -m)" == "x86_64" ]]; then PKGS+=(nasm yasm); fi
     dnf install -y "${PKGS[@]}"
@@ -78,6 +83,19 @@ if [[ ! -x "${VCPKG_ROOT}/vcpkg" ]]; then
     rm -rf "${VCPKG_ROOT}"
     git clone --filter=blob:none "${VCPKG_REPO}" "${VCPKG_ROOT}"
     git -C "${VCPKG_ROOT}" checkout "${VCPKG_COMMIT}"
+    # The from-source tool bootstrap (VCPKG_FORCE_SYSTEM_BINARIES path)
+    # compiles against bundled curl 7.29.0 HEADERS (chosen upstream for
+    # RHEL 7 compatibility), which predate curl's target-independent
+    # headers and #error out on architectures their old curlbuild.h does
+    # not know - riscv64 fails exactly there. vcpkg-tool's own escape
+    # hatch is -DVCPKG_LIBCURL_DLSYM_UPDATED_HEADERS=ON (curl 7.55.1
+    # target-independent headers, added upstream "mainly for arm64
+    # support"; SHA512-pinned in the tool's FindLibCURL.cmake).
+    # bootstrap.sh hardcodes its cmake options, so splice the flag in.
+    if [[ "$(uname -m)" != "x86_64" ]]; then
+        sed -i "s/-DVCPKG_DEVELOPMENT_WARNINGS=OFF/-DVCPKG_DEVELOPMENT_WARNINGS=OFF -DVCPKG_LIBCURL_DLSYM_UPDATED_HEADERS=ON/" \
+            "${VCPKG_ROOT}/scripts/bootstrap.sh"
+    fi
     "${VCPKG_ROOT}/bootstrap-vcpkg.sh" -disableMetrics
 fi
 
@@ -261,10 +279,60 @@ fi
 echo "OK: no forbidden dynamic dependencies."
 
 echo "=== smoke test ==="
+# dlopen + dlsym, because that is exactly how .NET's NativeLibrary consumes
+# the library (RTLD_LAZY). A static link (gcc -lOpenCvSharpExtern) would
+# demand full symbol resolution up front and fail on the allowlisted dangling
+# MLAS reference below, which the shipped upstream binaries carry too.
 cd /tmp
-printf '#include <stdio.h>\nint core_Mat_sizeof(); int main(){ printf("sizeof(Mat) = %%d\\n", core_Mat_sizeof()); return 0; }\n' > test.c
-gcc test.c -o test -L"$(dirname "${SO}")" -lOpenCvSharpExtern
+cat > test.c <<'EOF'
+#include <dlfcn.h>
+#include <stdio.h>
+int main(void) {
+    void *h = dlopen("libOpenCvSharpExtern.so", RTLD_LAZY | RTLD_LOCAL);
+    if (!h) { fprintf(stderr, "dlopen failed: %s\n", dlerror()); return 1; }
+    int (*fn)(void) = (int (*)(void))dlsym(h, "core_Mat_sizeof");
+    if (!fn) { fprintf(stderr, "dlsym failed: %s\n", dlerror()); return 1; }
+    printf("sizeof(Mat) = %d\n", fn());
+    return 0;
+}
+EOF
+gcc test.c -o test -ldl
 LD_LIBRARY_PATH="$(dirname "${SO}")" ./test
+
+echo "=== dangling-symbol allowlist check ==="
+# Symbols still unresolved after the loader walks the FULL dependency
+# closure (ldd -r). All three are benign under lazy binding and are carried
+# by the EXACT upstream-shipped binaries too (verified against the vendored
+# natives 2026-07-22):
+#   MlasHGemmSupported      OpenCV 5.0.0's vendored MLAS references it from
+#                           the DNN FP16/GQA dispatch, but the function is
+#                           only implemented in MLAS's ARM64 kernels (and
+#                           arm64 builds disable MLAS via the ASM workaround
+#                           above, so it appears on x64/riscv64 only)
+#   lzma_lzma_preset,       vcpkg's static libtiff enables its LZMA codec
+#   lzma_stream_encoder     but liblzma is never linked into the wrapper;
+#                           the shipped upstream linux-x64 binary dangles
+#                           the same two symbols. NOTE: in-container ldd -r
+#                           may MASK these when the image's library closure
+#                           loads liblzma globally - they showed on the
+#                           bare host but not inside the manylinux_2_28
+#                           container. The allowlist keeps the gate
+#                           deterministic either way.
+# Any dangling symbol NOT on this allowlist fails the build.
+ALLOWED_UNDEF='^(_Z18MlasHGemmSupported15CBLAS_TRANSPOSES_|lzma_lzma_preset|lzma_stream_encoder)$'
+DANGLING="$(ldd -r "${SO}" 2>&1 | awk '/undefined symbol:/{print $3}' | sort -u)" || true
+if [[ -n "${DANGLING}" ]]; then
+    echo "${DANGLING}"
+    BAD="$(echo "${DANGLING}" | grep -Ev "${ALLOWED_UNDEF}" || true)"
+    if [[ -n "${BAD}" ]]; then
+        echo "ERROR: unexpected dangling undefined symbols (not on the allowlist):" >&2
+        echo "${BAD}" >&2
+        exit 1
+    fi
+    echo "OK: only allowlisted dangling symbols."
+else
+    echo "OK: no dangling symbols."
+fi
 
 echo "=== glibc ceiling (the minimum glibc a target system needs) ==="
 GLIBC_MAX="$(objdump -T "${SO}" | grep -oE 'GLIBC_[0-9.]+' | sort -Vu | tail -1 || true)"

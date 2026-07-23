@@ -1,3 +1,9 @@
 # Build state and outputs - large binaries and caches, never committed.
 cache/
 output/
+
+# The repo-root .gitignore ignores *.env (secrets convention), which silently
+# swallowed pins.env when this tooling was first committed. pins.env is not a
+# secrets file - it is the version/commit/image pin manifest the build
+# REQUIRES - so unignore it explicitly here.
+!pins.env
