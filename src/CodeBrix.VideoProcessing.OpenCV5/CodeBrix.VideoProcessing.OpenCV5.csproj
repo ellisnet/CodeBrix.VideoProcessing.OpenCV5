@@ -62,7 +62,7 @@
     <Product>CodeBrix.VideoProcessing.OpenCV5</Product>
     <Title>CodeBrix.VideoProcessing.OpenCV5</Title>
     <Authors>Jeremy Ellis</Authors>
-    <Description>A fully managed .NET binding for OpenCV 5, derived from the OpenCvSharp5 project — image processing, video capture and analysis, camera calibration, object detection, machine learning, and the OpenCV contrib extra modules, with built-in Roslyn analyzers for common Mat usage mistakes. This package contains only the managed library; a native binding package for your platform is also required (CodeBrix.VideoProcessing.OpenCV5.WindowsX64 / .WindowsArm64 / .LinuxX64 / .LinuxArm64 / .MacOSX64 / .MacOSArm64, each with the .ApacheLicenseForever suffix).</Description>
+    <Description>A fully managed .NET binding for OpenCV 5, derived from the OpenCvSharp5 project — image processing, video capture and analysis, camera calibration, object detection, machine learning, and the OpenCV contrib extra modules, with built-in Roslyn analyzers for common Mat usage mistakes. This package contains only the managed library; a native binding package for your platform is also required (CodeBrix.VideoProcessing.OpenCV5.WindowsX64 / .WindowsArm64 / .LinuxX64 / .LinuxArm64 / .LinuxRiscv64 / .MacOSX64 / .MacOSArm64, each with the .ApacheLicenseForever suffix).</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ellisnet/CodeBrix.VideoProcessing.OpenCV5</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ellisnet/CodeBrix.VideoProcessing.OpenCV5</RepositoryUrl>
