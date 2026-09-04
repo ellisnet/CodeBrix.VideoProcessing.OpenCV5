@@ -73,7 +73,7 @@
     <Product>CodeBrix.VideoProcessing.OpenCV5.Wpf</Product>
     <Title>CodeBrix.VideoProcessing.OpenCV5.Wpf</Title>
     <Authors>Jeremy Ellis</Authors>
-    <Description>WPF extension library for CodeBrix.VideoProcessing.OpenCV5 (a .NET binding for OpenCV 5 derived from OpenCvSharp5) — converts Mat images to and from System.Windows.Media.Imaging BitmapSource and WriteableBitmap for display in WPF applications. Windows only.</Description>
+    <Description>WPF extension library for CodeBrix.VideoProcessing.OpenCV5 (a .NET binding for OpenCV 5) — converts Mat images to and from System.Windows.Media.Imaging BitmapSource and WriteableBitmap for display in WPF applications. Windows only.</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ellisnet/CodeBrix.VideoProcessing.OpenCV5</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ellisnet/CodeBrix.VideoProcessing.OpenCV5</RepositoryUrl>

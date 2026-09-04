@@ -20,7 +20,8 @@ managed dependencies; it P/Invokes a single native library named
 "OpenCvSharpExtern" that statically links OpenCV 5 plus opencv_contrib.
 
 Provenance: this is a port of the OpenCvSharp project's OpenCvSharp5 package
-family (https://github.com/shimat/opencvsharp, tag 5.0.0.20260703). Every
+family (https://github.com/shimat/opencvsharp); the exact upstream snapshot is
+recorded in THIRD-PARTY-NOTICES.txt. Every
 namespace root is "CodeBrix.VideoProcessing.OpenCV5" instead of "OpenCvSharp"
 — do NOT write OpenCvSharp namespaces or reference OpenCvSharp packages.
 Type names were NOT renamed, so a handful of upstream-flavoured identifiers

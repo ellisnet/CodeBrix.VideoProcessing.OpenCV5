@@ -73,10 +73,13 @@ REPOSITORY LAYOUT
   nugets/Release/<version>/       pack output
   CodeBrix.VideoProcessing.OpenCV5.slnx           the solution
 
-The .slnx lists AGENT-README.txt, icon-codebrix-128.png, LICENSE, README.md
-and THIRD-PARTY-NOTICES.txt under Solution Items, the three test projects
-under a Tests folder, the driver and shim under a Build folder, and the three
-src projects at the root.
+The .slnx lists AGENT-README.txt, EXTRAS-README.txt, icon-codebrix-128.png,
+LICENSE, MAINTAINER-README.txt, README-INDEX.txt, README.md and
+THIRD-PARTY-NOTICES.txt under Solution Items, the three test projects under a
+Tests folder, the driver and shim under a Build folder, and the three src
+projects at the root. Keep the Solution Items list in step when a root file is
+added or removed. There is no global.json in this repository, so `dotnet test`
+uses whichever runner the installed SDK defaults to.
 
 BUILDING
 ========
@@ -354,8 +357,9 @@ CodeBrix family rules that apply here:
     Internal/NativeLibraryLoadDiagnostics.cs
   - No <ImplicitUsings>, no global usings
   - No <NoWarn>/project-level warning suppression; fix warnings at source
-  - xUnit v3 + coverlet for tests; InternalsVisibleTo.cs grants internals to
-    the matching .Tests project
+  - xUnit v3 for tests (no coverage collector in any of the three test
+    projects); InternalsVisibleTo.cs grants internals to the matching .Tests
+    project
   - <GenerateDocumentationFile> is ON; public members carry XML doc comments
   - Copyright string: upstream attribution prepended to the family clause
     ("Copyright 2008-2026 shimat and the OpenCvSharp contributors. Copyright
