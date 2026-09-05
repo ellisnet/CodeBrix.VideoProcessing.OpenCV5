@@ -11,7 +11,7 @@
 		<icon>icon-codebrix-128.png</icon>
 		<readme>README.md</readme>
 		<description>Native OpenCV 5 binding library (OpenCvSharpExtern) for CodeBrix.VideoProcessing.OpenCV5 on Windows ARM64. Install alongside CodeBrix.VideoProcessing.OpenCV5.ApacheLicenseForever.</description>
-		<copyright>Copyright 2008-2026 shimat and the OpenCvSharp contributors. Copyright (C) 2000-2026, Intel Corporation, OpenCV Foundation, and the OpenCV contributors. Copyright (c) 2026 Jeremy Ellis and contributors.</copyright>
+		<copyright>Copyright (c) 2026 Jeremy Ellis and contributors</copyright>
 		<tags>opencv;opencv5;native;runtime;windows;arm64;CodeBrix</tags>
 		<repository type="git" url="https://github.com/ellisnet/CodeBrix.VideoProcessing.OpenCV5.git" branch="$branch$" commit="$commitid$" />
 	</metadata>
