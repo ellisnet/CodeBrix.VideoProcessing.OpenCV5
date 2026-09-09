@@ -105,7 +105,7 @@ BUILT-IN VERIFICATION (a build only succeeds if ALL of these pass)
   * glibc-ceiling report (informational; recorded in build-info.txt)
 
 Recommended additional test on a real target machine: stage output/<rid>/
-libOpenCvSharpExtern.so into the test suite per AGENT-README.txt ("RUNNING THE
+libOpenCvSharpExtern.so into the test suite per MAINTAINER-README.txt ("RUNNING THE
 TESTS" sections) and run the ported test suite against it.
 
 ADOPTING A BUILT ARTIFACT INTO THE SHIPPED PACKAGES
@@ -114,7 +114,8 @@ NOTE: adoption happened 2026-07-22 for ALL THREE Linux RIDs - native_libraries/
 now holds self-built binaries for linux-x64/linux-arm64/linux-riscv64 (the
 2026-07-07 "exact upstream artifacts, never rebuilt" decision is SUPERSEDED for
 the Linux RIDs; it still governs win-*/osx-*, and the supersession is recorded
-in AGENT-README.txt NATIVE LIBRARIES). Steps, for future re-adoptions:
+in MAINTAINER-README.txt, PROVENANCE AND VENDORED SOURCES). Steps, for
+future re-adoptions:
 
   1. xz -9e -k output/<rid>/libOpenCvSharpExtern.so
      mv output/<rid>/libOpenCvSharpExtern.so.xz \
@@ -122,7 +123,7 @@ in AGENT-README.txt NATIVE LIBRARIES). Steps, for future re-adoptions:
      (and place the RAW .so there too for local use - it stays git-ignored)
   2. Update the <rid> line in native_libraries/SHA256SUMS.txt with the sha256
      from build-info.txt (the pack step verifies it and fails on mismatch).
-  3. Pack and publish per AGENT-README.txt "PACKAGING / BUILD DRIVER"
+  3. Pack and publish per MAINTAINER-README.txt (PACKAGING AND PUBLISHING)
      (family rule: all packages publish at one version in one event).
 
   The linux-riscv64 runtime package plumbing was added 2026-07-22:

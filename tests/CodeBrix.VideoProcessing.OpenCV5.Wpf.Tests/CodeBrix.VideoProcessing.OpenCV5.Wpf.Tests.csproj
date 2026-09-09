@@ -19,9 +19,14 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
   <!-- On non-Windows the assembly is empty; opt out of test discovery so
-       `dotnet test` on the solution does not fail with "no test is available". -->
+       `dotnet test` on the solution does not fail. IsTestProject covers the
+       legacy VSTest runner ("no test is available"); IsTestingPlatformApplication
+       covers the Microsoft.Testing.Platform runner that global.json selects
+       (xunit.v3 4.0.0 forces it true, and the runner would then execute this
+       empty assembly and fail the whole run with exit code 8, "zero tests ran"). -->
   <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
     <IsTestProject>false</IsTestProject>
+    <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
   </PropertyGroup>
   <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
     <Compile Remove="BitmapSourceConverterTests.cs;WriteableBitmapConverterTests.cs" />

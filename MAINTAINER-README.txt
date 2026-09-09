@@ -73,13 +73,16 @@ REPOSITORY LAYOUT
   nugets/Release/<version>/       pack output
   CodeBrix.VideoProcessing.OpenCV5.slnx           the solution
 
-The .slnx lists AGENT-README.txt, EXTRAS-README.txt, icon-codebrix-128.png,
-LICENSE, MAINTAINER-README.txt, README-INDEX.txt, README.md and
-THIRD-PARTY-NOTICES.txt under Solution Items, the three test projects under a
-Tests folder, the driver and shim under a Build folder, and the three src
-projects at the root. Keep the Solution Items list in step when a root file is
-added or removed. There is no global.json in this repository, so `dotnet test`
-uses whichever runner the installed SDK defaults to.
+The .slnx lists .gitignore, AGENT-README.txt, EXTRAS-README.txt, global.json,
+icon-codebrix-128.png, LICENSE, MAINTAINER-README.txt, README-INDEX.txt,
+README.md and THIRD-PARTY-NOTICES.txt under Solution Items, the three test
+projects under a Tests folder, the driver and shim under a Build folder, and
+the three src projects at the root. Keep the Solution Items list in step when a
+root file is added or removed. global.json (beside the .slnx) carries only
+`"test": {"runner": "Microsoft.Testing.Platform"}`: xunit.v3 4.0.0 brings a
+Microsoft.Testing.Platform that no longer supports the legacy VSTest bridge,
+so without it `dotnet test` on the .NET 10 SDK refuses to run. It pins no SDK
+version.
 
 BUILDING
 ========
@@ -88,6 +91,14 @@ BUILDING
 On non-Windows hosts the .Wpf project and .Wpf.Tests compile to empty
 assemblies (their two converter sources are excluded outright), so the whole
 solution restores and builds everywhere.
+
+The pack driver is part of the solution, and its PackCodeBrix target runs
+after Build whenever Configuration is Release. So `dotnet build <slnx>
+-c Release` (and `dotnet test -c Release`, which builds first) IS a full pack
+run: it materializes and hash-checks the natives and writes a fresh
+version-stamped package set to nugets/Release/<version>/ (see PACKAGING AND
+PUBLISHING). Build Debug when you only want binaries, or delete the unwanted
+nugets/Release/<version>/ folder afterwards (it is git-ignored build output).
 
 TESTING
 =======
