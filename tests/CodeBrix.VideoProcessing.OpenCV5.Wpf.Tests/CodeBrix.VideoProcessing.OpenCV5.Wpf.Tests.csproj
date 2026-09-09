@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
   <!--
     Conditional SDK imports, same pattern as the .Wpf library project: on
     non-Windows hosts the plain SDK is used, the two WPF-dependent test files
@@ -35,16 +35,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <!-- StaFact adds a Microsoft.WindowsDesktop.App FrameworkReference, which
-         does not resolve on non-Windows hosts — and the STA tests are excluded
-         there anyway, so the package is Windows-only. -->
-    <PackageReference Include="Xunit.StaFact" Version="3.0.13" Condition="'$(OS)' == 'Windows_NT'" />
-    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="xunit.v3" Version="4.0.0" />
   </ItemGroup>
 
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" Condition="'$(OS)' != 'Windows_NT'" />

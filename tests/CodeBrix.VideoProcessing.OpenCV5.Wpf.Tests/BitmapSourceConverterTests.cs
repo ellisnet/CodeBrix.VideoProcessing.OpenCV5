@@ -1,6 +1,8 @@
 using System;
 using System.Globalization;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
@@ -63,8 +65,13 @@ public class BitmapSourceConverterTests : CodeBrix.VideoProcessing.OpenCV5.Tests
     /// <summary>
     /// https://github.com/shimat/opencvsharp/issues/304
     /// </summary>
-    [StaFact(Skip = "sample")]
-    public void BitmapSourceSample()
+    /// <remarks>
+    /// WPF requires an STA thread. xUnit v3 has no built-in STA fact attribute
+    /// (that was the sole reason this project referenced Xunit.StaFact), so the
+    /// body runs on an STA thread this test owns — see <see cref="RunOnStaThread"/>.
+    /// </remarks>
+    [Fact(Skip = "sample")]
+    public void BitmapSourceSample() => RunOnStaThread(() =>
     {
         const int size = 250;
 
@@ -128,6 +135,32 @@ public class BitmapSourceConverterTests : CodeBrix.VideoProcessing.OpenCV5.Tests
 
         var app = new Application();
         app.Run(window);
+    });
+
+    /// <summary>
+    /// Runs <paramref name="action"/> on a dedicated STA thread and rethrows any
+    /// failure on the caller's thread, preserving the original stack trace.
+    /// </summary>
+    private static void RunOnStaThread(Action action)
+    {
+        ExceptionDispatchInfo? failure = null;
+
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception ex)
+            {
+                failure = ExceptionDispatchInfo.Capture(ex);
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+
+        failure?.Throw();
     }
 
     private static void AssertPixelValue<T>(Scalar expectedValue, BitmapSource bs)

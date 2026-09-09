@@ -3,7 +3,10 @@ using System.Diagnostics;
 using System.IO;
 using Xunit;
 
-[assembly: CollectionBehavior(/*MaxParallelThreads = 2, */DisableTestParallelization = true)]
+// xunit.v3 4.0.0 replaced CollectionBehavior.DisableTestParallelization (now
+// obsolete-as-error) with Parallelization.Mode. ParallelMode.None is the
+// equivalent: no parallelism anywhere in this assembly.
+[assembly: Xunit.v3.Parallelization(/*MaxThreads = 2, */Mode = Xunit.Sdk.ParallelMode.None)]
 
 #pragma warning disable CA1810 // Initialize reference type static fields inline
 #pragma warning disable CA5359 

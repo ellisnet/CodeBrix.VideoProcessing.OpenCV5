@@ -3,9 +3,20 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
-using BitMiracle.LibTiff.Classic;
 using SkiaSharp;
 using Xunit;
+
+using CodeBrix.Imaging.Formats;
+using CodeBrix.Imaging.Formats.Bmp;
+using CodeBrix.Imaging.Formats.Jpeg;
+using CodeBrix.Imaging.Formats.Png;
+using CodeBrix.Imaging.Formats.Tiff;
+
+// The Image type is aliased rather than imported wholesale: the CodeBrix.Imaging root
+// namespace also declares Point, Size and Color, which would collide with the OpenCV5
+// types this file resolves unqualified from its parent namespace. The Formats
+// namespaces above have no such overlap.
+using ImagingImage = CodeBrix.Imaging.Image;
 
 #pragma warning disable CA1031
 
@@ -396,7 +407,7 @@ public class ImgCodecsTests : TestBase
         Assert.NotNull(imageData);
 
         // Can an independent decoder read the imageData?
-        var (width, height) = IdentifyImageBytes(imageData, ext);
+        var (width, height) = IdentifyImageBytes(imageData);
         Assert.Equal(mat.Rows, height);
         Assert.Equal(mat.Cols, width);
     }
@@ -408,21 +419,25 @@ public class ImgCodecsTests : TestBase
     [InlineData("Bmp")]
     public void ImDecode(string imageFormatName)
     {
-        // Tiff/Bmp: SkiaSharp cannot encode these formats, so we use pre-generated fixture
-        // files (produced once from mandrill.png by an independent encoder) instead.
-        var imageData = imageFormatName switch
+        // All four formats are encoded here from mandrill.png by an independent encoder.
+        // Tiff and Bmp used to come from pre-generated fixture files because SkiaSharp
+        // cannot encode them; CodeBrix.Imaging can, so every case is now generated the
+        // same way and the decoded bytes are guaranteed to match the source image.
+        const string sourcePath = "_data/image/mandrill.png";
+
+        IImageEncoder encoder = imageFormatName switch
         {
-            "Png" => EncodeWithSkia("_data/image/mandrill.png", SKEncodedImageFormat.Png),
-            "Jpeg" => EncodeWithSkia("_data/image/mandrill.png", SKEncodedImageFormat.Jpeg),
-            "Tiff" => File.ReadAllBytes("_data/image/mandrill.tif"),
-            "Bmp" => File.ReadAllBytes("_data/image/mandrill.bmp"),
+            "Png" => new PngEncoder(),
+            "Jpeg" => new JpegEncoder(),
+            "Tiff" => new TiffEncoder(),
+            "Bmp" => new BmpEncoder(),
             _ => throw new ArgumentOutOfRangeException(nameof(imageFormatName), imageFormatName, null)
         };
-        Assert.NotNull(imageData);
 
-        using var codec = SKCodec.Create("_data/image/mandrill.png");
-        var referenceWidth = codec.Info.Width;
-        var referenceHeight = codec.Info.Height;
+        var imageData = EncodeWithImaging(sourcePath, encoder);
+        Assert.NotEmpty(imageData);
+
+        var (referenceWidth, referenceHeight) = IdentifyImage(sourcePath);
 
         using var mat = Cv2.ImDecode(imageData, ImreadModes.Color);
         Assert.NotNull(mat);
@@ -517,60 +532,29 @@ public class ImgCodecsTests : TestBase
         Assert.True(File.Exists(path), $"File '{path}' not found");
     }
 
-    private static byte[] EncodeWithSkia(string path, SKEncodedImageFormat format)
+    // Re-encodes an image file into another format in memory, so the encode side stays
+    // independent of the OpenCV decode path under test.
+    private static byte[] EncodeWithImaging(string path, IImageEncoder encoder)
     {
-        using var bitmap = SKBitmap.Decode(path) ?? throw new InvalidOperationException($"Cannot decode '{path}'");
-        using var image = SKImage.FromBitmap(bitmap);
-        using var data = image.Encode(format, 100);
-        return data.ToArray();
+        using var image = ImagingImage.Load(path);
+        using var stream = new MemoryStream();
+        image.Save(stream, encoder);
+        return stream.ToArray();
     }
 
-    // Reads only Width/Height metadata via an independent decoder (SkiaSharp for
-    // png/jpg/bmp, LibTiff.NET for tiff, since SkiaSharp does not support tiff).
-    private static bool IsTiffExtension(string ext) =>
-        ext.Equals(".tif", StringComparison.OrdinalIgnoreCase) || ext.Equals(".tiff", StringComparison.OrdinalIgnoreCase);
-
+    // Reads only Width/Height metadata via an independent decoder. CodeBrix.Imaging
+    // covers every format these tests exercise (png/jpg/bmp/tiff), so no per-format
+    // branching is needed — previously this split between SkiaSharp and LibTiff.NET
+    // because SkiaSharp cannot read tiff.
     private static (int Width, int Height) IdentifyImage(string path)
     {
-        if (IsTiffExtension(Path.GetExtension(path)))
-        {
-            using var tiff = Tiff.Open(path, "r") ?? throw new InvalidOperationException($"Cannot open '{path}'");
-            return (tiff.GetField(TiffTag.IMAGEWIDTH)[0].ToInt(), tiff.GetField(TiffTag.IMAGELENGTH)[0].ToInt());
-        }
-
-        using var codec = SKCodec.Create(path);
-        return (codec.Info.Width, codec.Info.Height);
+        var info = ImagingImage.Identify(path);
+        return (info.Width, info.Height);
     }
 
-    private static (int Width, int Height) IdentifyImageBytes(byte[] data, string ext)
+    private static (int Width, int Height) IdentifyImageBytes(byte[] data)
     {
-        if (IsTiffExtension(ext))
-        {
-            using var ms = new MemoryStream(data);
-            using var tiff = Tiff.ClientOpen("in-memory", "r", ms, new ReadOnlyTiffStream())
-                ?? throw new InvalidOperationException("Cannot open TIFF byte data");
-            return (tiff.GetField(TiffTag.IMAGEWIDTH)[0].ToInt(), tiff.GetField(TiffTag.IMAGELENGTH)[0].ToInt());
-        }
-
-        using var memoryStream = new SKMemoryStream(data);
-        using var codec = SKCodec.Create(memoryStream);
-        return (codec.Info.Width, codec.Info.Height);
-    }
-
-    // Read-only adapter so LibTiff.NET can read TIFF data straight from a MemoryStream.
-    private sealed class ReadOnlyTiffStream : TiffStream
-    {
-        public override int Read(object clientData, byte[] buffer, int offset, int count)
-            => ((Stream)clientData).Read(buffer, offset, count);
-
-        public override long Seek(object clientData, long offset, SeekOrigin origin)
-            => ((Stream)clientData).Seek(offset, origin);
-
-        public override void Close(object clientData)
-        {
-            // The caller owns the underlying stream's lifetime.
-        }
-
-        public override long Size(object clientData) => ((Stream)clientData).Length;
+        var info = ImagingImage.Identify(data);
+        return (info.Width, info.Height);
     }
 }

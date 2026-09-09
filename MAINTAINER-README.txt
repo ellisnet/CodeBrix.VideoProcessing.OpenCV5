@@ -398,11 +398,15 @@ DOCUMENTED PER-REPO EXCEPTIONS (do not "fix" these)
    assembly and produces no package. net10.0-windows auto-defines WINDOWS even
    on Linux, so the `#if WINDOWS` guards alone cannot do this.
 5. AllowUnsafeBlocks is ON (the binding uses pointers extensively).
-6. The .Tests project references Xunit.StaFact with PrivateAssets=all. It
-   ships only Windows-desktop TFM assets; leaking it transitively into the
-   net10.0-windows .Wpf.Tests project made that project fail to build on
-   non-Windows with NETSDK1073. .Wpf.Tests declares its own Windows-only
-   StaFact reference.
+6. No Xunit.StaFact reference. The package was dropped when the suites moved
+   to xunit.v3 4.0.0: nothing used its attributes except the permanently
+   skipped BitmapSourceSample WPF sample, which now hosts its own STA thread
+   (RunOnStaThread in BitmapSourceConverterTests.cs). Do NOT reintroduce it —
+   it ships only Windows-desktop TFM assets, so it needs PrivateAssets=all in
+   .Tests plus an OS condition in .Wpf.Tests, or the transitive
+   Microsoft.WindowsDesktop.App framework reference breaks non-Windows builds
+   with NETSDK1073. xunit v3 has no built-in STA attribute; use a private STA
+   thread instead.
 
 NOTES
 =====

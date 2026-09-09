@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -24,26 +24,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
-    <PackageReference Include="CodeBrix.Compression.MitLicenseForever" Version="1.0.198.139" />
-    <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.660" />
-    <PackageReference Include="SkiaSharp" Version="4.150.1" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.150.1" />
-    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="4.150.1" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageReference Include="CodeBrix.Compression.MitLicenseForever" Version="1.0.248.1109" />
+    <PackageReference Include="CodeBrix.Imaging.ApacheLicenseForever" Version="1.0.248.1113" />
+    <PackageReference Include="SkiaSharp" Version="4.152.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.152.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="4.152.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <!-- PrivateAssets=all keeps StaFact from flowing transitively to projects
-         that reference this one. It ships only Windows-desktop TFM assets (which
-         carry a Microsoft.WindowsDesktop.App framework reference); leaking it
-         into the net10.0-windows .Wpf.Tests project made that project fail to
-         build on non-Windows with NETSDK1073. .Wpf.Tests declares its own
-         Windows-only StaFact reference for its WPF tests. -->
-    <PackageReference Include="Xunit.StaFact" Version="3.0.13">
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="xunit.v3" Version="4.0.0" />
   </ItemGroup>
 
   <!--
