@@ -4,10 +4,10 @@ CodeBrix.VideoProcessing.OpenCV5 is a .NET binding for OpenCV 5 — image
 processing, video capture and analysis, camera calibration, object detection,
 machine learning, and the OpenCV contrib extra modules. It is a fork/port of
 the OpenCvSharp project (its OpenCvSharp5 package family) and additionally
-redistributes native binary libraries: for Windows and macOS, the exact
+redistributes native binary libraries: for Windows and macOS ARM64, the exact
 binaries the upstream project published to NuGet; for Linux (x64, ARM64, and
-RISC-V 64), binaries built from source by this repository using the upstream
-project's vendored native sources (see item 2). Everything incorporated from
+RISC-V 64) and macOS x64, binaries built from source by this repository using
+the upstream project's vendored native sources (see item 2). Everything incorporated from
 other projects is listed below.
 
 Jeremy Ellis and contributors license the CodeBrix.VideoProcessing.OpenCV5
@@ -100,13 +100,12 @@ https://github.com/ellisnet/CodeBrix.VideoProcessing.OpenCV5/issues
    together with the OpenCvSharpExtern C wrapper layer by shimat (Apache
    License 2.0, see item 1). Their provenance differs by operating system:
 
-   2a. WINDOWS and MACOS binaries (runtimes/win-x64, win-arm64, osx-x64,
+   2a. WINDOWS and MACOS ARM64 binaries (runtimes/win-x64, win-arm64,
        osx-arm64): the EXACT binaries published by the upstream OpenCvSharp
        project in its NuGet runtime packages, extracted unmodified from:
 
          OpenCvSharp5.runtime.win                 5.0.0.20260703
          OpenCvSharp5.runtime.win-arm64           5.0.0.20260703
-         OpenCvSharp5.runtime.osx.x64             5.0.0.20260704
          OpenCvSharp5.runtime.osx.arm64           5.0.0.20260704
 
        These binaries were captured once (2026-07-07) and are never
@@ -156,7 +155,51 @@ https://github.com/ellisnet/CodeBrix.VideoProcessing.OpenCV5/issues
        versions, container image, source revisions, SHA-256, and the
        dynamic-dependency list — is recorded in each build's build-info.txt.
 
-   Per-file SHA-256 hashes of the raw (uncompressed) binaries for BOTH
+   2c. MACOS X64 binary (runtimes/osx-x64): BUILT FROM SOURCE by this
+       repository (adopted 2026-09-24) with
+       tools/build_native_libraries/build_macos.sh, following the upstream
+       project's own macOS x64 recipe (native_src/ci-workflows/macos.yml)
+       with AVIF support disabled. It replaces the upstream
+       OpenCvSharp5.runtime.osx.x64 5.0.0.20260704 binary and embeds the
+       same set of components that binary did:
+
+         - the vendored OpenCvSharpExtern wrapper source (item 1)
+         - OpenCV and opencv_contrib at the exact revisions the upstream
+           binaries were built from (Apache License 2.0)
+         - FFmpeg 8.0.1 (vcpkg port, LGPL build - no GPL features),
+           STATICALLY LINKED. FFmpeg is licensed under the LGPL-2.1+
+           (https://ffmpeg.org/legal.html); its version and the complete
+           build recipe are recorded in tools/build_native_libraries/
+           (pins.env, build_macos.sh, output build-info.txt), allowing it to
+           be rebuilt and relinked from source.
+         - libraries built statically via vcpkg (manifest:
+           native_src/vcpkg.json; baseline pinned in pins.env):
+             libjpeg-turbo  (IJG / modified-BSD / zlib licenses)
+             libpng         (PNG Reference Library License)
+             libtiff        (libtiff/MIT-style license)
+             libwebp        (BSD-3-Clause)
+             zlib           (zlib license)
+             Tesseract OCR  (Apache License 2.0)
+             Leptonica      (Leptonica License, BSD-style)
+             giflib         (MIT)
+             OpenJPEG       (BSD-2-Clause)
+             libarchive     (BSD-2-Clause)
+             bzip2          (bzip2 license, BSD-style)
+             liblzma / xz   (0BSD)
+             zstd           (BSD-3-Clause)
+             lz4            (BSD-2-Clause)
+             curl           (curl license, MIT-style)
+             OpenSSL        (Apache License 2.0)
+         - OpenCV's bundled third-party components (e.g. protobuf, and the
+           Intel IPP ICV subset under the Intel Simplified Software License)
+           under their respective licenses, as in the upstream builds.
+
+       Only macOS system libraries (/usr/lib) and frameworks are linked
+       dynamically. Per-build provenance - every vcpkg package version,
+       source revisions, SHA-256, and the dynamic-dependency list - is
+       recorded in the build's build-info.txt.
+
+   Per-file SHA-256 hashes of the raw (uncompressed) binaries for ALL
    provenance groups are recorded in native_libraries/SHA256SUMS.txt; the
    pack step verifies them before any package is produced.
 

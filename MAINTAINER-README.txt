@@ -128,6 +128,13 @@ target), then put the folder on LD_LIBRARY_PATH:
     export LD_LIBRARY_PATH="$PWD/native_libraries/runtimes/linux-x64/native:$LD_LIBRARY_PATH"
     dotnet test CodeBrix.VideoProcessing.OpenCV5.slnx
 
+On macOS the variable is DYLD_LIBRARY_PATH and the folder is osx-x64 or
+osx-arm64 (sha256sum and xz are both available on current macOS; xz via
+Homebrew or the tukaani.org package). Verified 2026-09-24 on Intel:
+
+    DYLD_LIBRARY_PATH="$PWD/native_libraries/runtimes/osx-x64/native" \
+        dotnet test CodeBrix.VideoProcessing.OpenCV5.slnx
+
 The .Tests csproj has a _RemindNativeLibraryPath target that runs before every
 build on non-Windows and emits two loud, copy-pasteable warnings (it only
 warns, never fails):
@@ -319,7 +326,7 @@ OpenCvSafeHandle and the native library name "OpenCvSharpExtern" are retained.
 
 Native binaries (native_libraries/runtimes/{rid}/native/, all .xz-compressed)
 ----------------------------------------------------------------------------
-  WINDOWS + MACOS (win-x64, win-arm64, osx-x64, osx-arm64): the EXACT
+  WINDOWS + MACOS ARM64 (win-x64, win-arm64, osx-arm64): the EXACT
     binaries upstream published (5.0.0.20260703; osx 5.0.0.20260704), captured
     once on 2026-07-07 per that day's decision: NEVER pull anything from the
     shimat/opencvsharp repo or nuget.org again. No fetch scripts. The upstream
@@ -344,6 +351,28 @@ Native binaries (native_libraries/runtimes/{rid}/native/, all .xz-compressed)
     suite run pending; linux-riscv64 verified by build gates only (dlopen
     smoke + forbidden-soname + dangling-symbol allowlist + glibc ceiling), no
     riscv64 hardware test yet.
+  MACOS X64 (osx-x64): SELF-BUILT 2026-09-24 on an Intel Mac by
+    tools/build_native_libraries/build_macos.sh (this SUPERSEDES the
+    2026-07-07 clause for osx-x64 too). Motivation: the upstream osx-x64
+    binary hard-linked /usr/local/opt/libavif/lib/libavif.16.dylib (upstream's
+    macos-26-intel CI runner had Homebrew libavif, and OpenCV's imgcodecs
+    auto-detected it), so it failed to load on every Intel Mac without that
+    exact Homebrew package: 129 of the suite's tests failed and the test host
+    aborted. The recipe is upstream's macos.yml build_x64 job step for step
+    (vcpkg x64-osx-static, same OpenCV options, same wrapper link line) plus
+    WITH_AVIF=OFF, which matches osx-arm64 (no AVIF there either). Gates:
+    the OpenCV feature check, no Homebrew paths in the CMake cache, dynamic
+    dependencies only under /usr/lib and /System/Library (the result equals
+    the old binary's list minus libavif, and equals osx-arm64's list),
+    RTLD_NOW dlopen smoke test, and every P/Invoke entry point the old binary
+    exported (3118) still exported. Validation (Intel Mac mini, macOS 15.8):
+    full suite 1226 pass / 81 skip / 1 fail, IDENTICAL to the old upstream
+    binary when that one is made loadable with a stub libavif; the one
+    failure, Calib3DTests.FindFundamentalMat (a degenerate 8-point input
+    whose expected-empty result is a floating-point rank decision), fails
+    the same way with both binaries. libaec is fetched through the
+    overlay-ports/libaec port (git, pinned commit) because GitLab's archive
+    endpoint answered HTTP 429 to every anonymous request.
   native_libraries/SHA256SUMS.txt records the SHA-256 of every RAW
     (uncompressed) binary; the pack step verifies these and fails loudly on
     any mismatch.
@@ -352,7 +381,8 @@ Native binaries (native_libraries/runtimes/{rid}/native/, all .xz-compressed)
     applies anywhere in history. .gitignore enforces this; leave it be.
   native_src/ holds the verbatim upstream C++ wrapper source, CMake, docker
     and CI-workflow files. tools/build_native_libraries/ consumes it for the
-    Linux self-builds; it is reference-only for Windows/macOS.
+    Linux and osx-x64 self-builds; it is reference-only for Windows and
+    osx-arm64.
   The win-x64 package also ships opencv_videoio_ffmpeg500_64.dll (OpenCV's
     FFmpeg-based videoio plugin). FFmpeg is LGPL — see THIRD-PARTY-NOTICES.txt.
 

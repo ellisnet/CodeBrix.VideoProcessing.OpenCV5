@@ -115,9 +115,10 @@ against it on a real target machine.
 
 ADOPTING A BUILT ARTIFACT INTO THE SHIPPED PACKAGES
 ---------------------------------------------------
-Adoption already happened on 2026-07-22 for ALL THREE Linux RIDs;
-native_libraries/ now holds self-built binaries for linux-x64, linux-arm64 and
-linux-riscv64. Steps for a future re-adoption:
+Adoption already happened on 2026-07-22 for ALL THREE Linux RIDs and on
+2026-09-24 for osx-x64; native_libraries/ now holds self-built binaries for
+linux-x64, linux-arm64, linux-riscv64 and osx-x64 (for osx-x64 the file is
+libOpenCvSharpExtern.dylib). Steps for a future re-adoption:
 
   1. xz -9e -k output/<rid>/libOpenCvSharpExtern.so
      mv output/<rid>/libOpenCvSharpExtern.so.xz \
@@ -136,6 +137,11 @@ FILES
   triplets/arm64-linux-static.cmake     vcpkg overlay triplet
   triplets/riscv64-linux-static.cmake   vcpkg overlay triplet
   (x64 uses upstream's native_src/cmake/triplets/x64-linux-static.cmake)
+  build_macos.sh                 osx-x64, built directly on an Intel Mac host
+                                 (upstream macos.yml recipe + WITH_AVIF=OFF;
+                                 see README.txt MACOS X64 for why and how)
+  overlay-ports/libaec/          libaec fetched over git (GitLab archive
+                                 endpoint returned HTTP 429)
   README.txt                     the full recipe, expanded
 
 native_src/ — vendored upstream native sources (REFERENCE ONLY)
@@ -156,9 +162,9 @@ Everything here was copied VERBATIM from the upstream OpenCvSharp repository
   CMakeLists-src.txt      the top-level native CMake, renamed so nothing treats
                           this folder as a live build tree
 
-tools/build_native_libraries/ consumes this folder for the Linux self-builds.
-For Windows and macOS it is reference material only — those binaries are the
-exact upstream-published artifacts and are never rebuilt here. See
+tools/build_native_libraries/ consumes this folder for the Linux and macOS x64
+self-builds. For Windows and macOS ARM64 it is reference material only — those
+binaries are the exact upstream-published artifacts and are never rebuilt here. See
 native_src/README-NATIVE-SRC.txt for the per-folder provenance.
 
 native_libraries/ — vendored native binaries

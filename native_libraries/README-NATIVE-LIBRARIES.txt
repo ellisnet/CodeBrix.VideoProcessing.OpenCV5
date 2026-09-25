@@ -4,9 +4,9 @@ native_libraries/ — vendored native binaries (xz-compressed)
 
 The *.xz files under runtimes/ have split provenance:
 
-  win-x64, win-arm64, osx-x64, osx-arm64: the EXACT native binaries published
+  win-x64, win-arm64, osx-arm64: the EXACT native binaries published
   by the upstream OpenCvSharp project on NuGet (OpenCvSharp5 runtime packages,
-  5.0.0.20260703; osx packages 5.0.0.20260704), captured once on 2026-07-07
+  5.0.0.20260703; osx package 5.0.0.20260704), captured once on 2026-07-07
   and never re-fetched.
 
   linux-x64, linux-arm64, linux-riscv64: SELF-BUILT portable manylinux-model
@@ -14,6 +14,13 @@ The *.xz files under runtimes/ have split provenance:
   from the vendored ../native_src/ wrapper source and pinned upstream
   revisions; per-build provenance lives in that tooling's output
   build-info.txt files.
+
+  osx-x64: SELF-BUILT (adopted 2026-09-24) by
+  ../tools/build_native_libraries/build_macos.sh, replacing the upstream
+  5.0.0.20260704 binary, which hard-linked Homebrew's
+  /usr/local/opt/libavif/lib/libavif.16.dylib and so failed to load on any
+  Intel Mac without that package. Same recipe as upstream's macos.yml plus
+  WITH_AVIF=OFF; depends only on /usr/lib and /System frameworks.
 
 Each file sits at its nupkg path plus an .xz suffix
 (e.g. runtimes/linux-x64/native/libOpenCvSharpExtern.so.xz), so the

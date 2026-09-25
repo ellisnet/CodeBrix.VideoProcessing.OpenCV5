@@ -1,5 +1,6 @@
 ================================================================================
-tools/build_native_libraries - portable Linux natives, built the manylinux way
+tools/build_native_libraries - portable Linux natives, built the manylinux way,
+                               and the macOS x64 native (build_macos.sh)
 ================================================================================
 
 WHAT THIS IS
@@ -108,14 +109,79 @@ Recommended additional test on a real target machine: stage output/<rid>/
 libOpenCvSharpExtern.so into the test suite per MAINTAINER-README.txt ("RUNNING THE
 TESTS" sections) and run the ported test suite against it.
 
+MACOS X64 (osx-x64) - build_macos.sh (added 2026-09-24)
+-------------------------------------------------------
+macOS cannot run in a container, so osx-x64 is built directly on an Intel Mac
+host by build_macos.sh, following the upstream macOS x64 recipe
+(native_src/ci-workflows/macos.yml, "build_x64" job) step for step: vcpkg with
+upstream's x64-osx-static triplet (image libs, Tesseract, Leptonica, FFmpeg,
+HDF5, FreeType, HarfBuzz, Eigen - all static), OpenCV + contrib with the same
+options, and the wrapper with upstream's exact link line. Minimum macOS 11.0.
+
+WHY IT EXISTS: the upstream osx-x64 binary (5.0.0.20260704) was built on a
+GitHub macos-26-intel runner that had Homebrew's libavif installed; OpenCV's
+imgcodecs auto-detected it, so the shipped dylib hard-links
+/usr/local/opt/libavif/lib/libavif.16.dylib and fails to load on every Intel
+Mac without that package ("Library not loaded: ...libavif.16.dylib"). The
+build adds -D WITH_AVIF=OFF (osx-arm64 has no AVIF either, so both macOS RIDs
+expose the same codecs). osx-arm64 is NOT rebuilt: its upstream binary has no
+such dependency.
+
+HOST REQUIREMENTS (installed by YOU, never by the script)
+  * Intel Mac + Xcode Command Line Tools
+  * cmake, ninja, pkg-config, git, curl, xz, unzip on PATH
+  * NOT nasm: vcpkg acquires NASM itself only on Windows, so the script
+    downloads the official NASM 3.01 macOS build (pins.env NASM_*, SHA-256
+    checked) into cache/ and puts it on PATH for the build only
+  * ~30 GB disk; time on a 2018 6-core i7 Mac mini: vcpkg ~1 h, OpenCV
+    ~25 min, wrapper ~2 min
+
+BUILD-HOST HYGIENE: a Mac with Homebrew in /usr/local is exactly how libavif
+leaked into the upstream binary, so pkg-config is confined to the vcpkg
+install tree (PKG_CONFIG_LIBDIR) and the gates below catch anything else.
+
+OVERLAY PORT: overlay-ports/libaec (an HDF5 dependency) is the baseline port
+with ONE change - its source comes over git (URL + pinned commit) instead of
+GitLab's generated archive, because gitlab.dkrz.de answered every anonymous
+archive request with HTTP 429 (from two different networks, 2026-09-24). The
+commit pins the source as exactly as the archive's SHA512 did.
+
+USAGE
+  cd tools/build_native_libraries
+  ./build_macos.sh x64          (JOBS=<n> to limit parallelism)
+  State under cache/osx-x64/ (resumable, delete to rebuild), logs in
+  cache/osx-x64/logs/, artifacts in output/osx-x64/. Relinking is
+  deterministic: a re-run reproduces the same SHA-256.
+
+BUILT-IN VERIFICATION (the build succeeds only if ALL pass)
+  * the upstream feature check (JPEG/PNG/TIFF/WEBP/FFMPEG/Tesseract) plus
+    AVIF must be OFF
+  * no /usr/local or /opt/homebrew library/include path in the OpenCV
+    CMakeCache.txt
+  * dependency allowlist: every otool -L entry must be under /usr/lib or
+    /System/Library (the 2026-09-24 build: the old binary's list minus
+    libavif, identical to osx-arm64's list)
+  * dlopen(RTLD_NOW) + dlsym(core_Mat_sizeof) smoke test
+  * P/Invoke entry-point parity: every [LibraryImport(DllExtern ...)] entry
+    point in src/ that the shipped osx-x64 binary exported must still be
+    exported (3118 of 3153 declared; the other 35 were never exported by
+    any shipped binary). A raw export-table diff is deliberately NOT used:
+    the upstream binary also leaked Intel IPP and FFmpeg internals whose
+    set varies with dependency versions.
+
+build-info.txt additionally records the build host, compiler, SDK, every
+vcpkg package version, and the SHA-256 of every source archive vcpkg
+downloaded.
+
 ADOPTING A BUILT ARTIFACT INTO THE SHIPPED PACKAGES
 ---------------------------------------------------
-NOTE: adoption happened 2026-07-22 for ALL THREE Linux RIDs - native_libraries/
-now holds self-built binaries for linux-x64/linux-arm64/linux-riscv64 (the
-2026-07-07 "exact upstream artifacts, never rebuilt" decision is SUPERSEDED for
-the Linux RIDs; it still governs win-*/osx-*, and the supersession is recorded
-in MAINTAINER-README.txt, PROVENANCE AND VENDORED SOURCES). Steps, for
-future re-adoptions:
+NOTE: adoption happened 2026-07-22 for ALL THREE Linux RIDs and 2026-09-24
+for osx-x64 (build_macos.sh; same steps with libOpenCvSharpExtern.dylib) -
+native_libraries/ now holds self-built binaries for linux-x64/linux-arm64/
+linux-riscv64/osx-x64 (the 2026-07-07 "exact upstream artifacts, never
+rebuilt" decision is SUPERSEDED for those RIDs; it still governs win-* and
+osx-arm64, and the supersession is recorded in MAINTAINER-README.txt,
+PROVENANCE AND VENDORED SOURCES). Steps, for future re-adoptions:
 
   1. xz -9e -k output/<rid>/libOpenCvSharpExtern.so
      mv output/<rid>/libOpenCvSharpExtern.so.xz \
@@ -140,4 +206,6 @@ FILES
   triplets/arm64-linux-static.cmake    vcpkg overlay triplet (new arch)
   triplets/riscv64-linux-static.cmake  vcpkg overlay triplet (new arch)
   (x64 uses upstream's native_src/cmake/triplets/x64-linux-static.cmake)
+  build_macos.sh                 osx-x64 build on an Intel Mac host (no container)
+  overlay-ports/libaec/          libaec port fetching over git (see MACOS X64)
 ================================================================================
