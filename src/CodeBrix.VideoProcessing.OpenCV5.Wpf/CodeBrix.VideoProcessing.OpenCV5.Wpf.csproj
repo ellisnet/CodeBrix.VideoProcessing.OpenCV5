@@ -108,7 +108,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Drawing.Common" Version="10.0.12" />
+    <PackageReference Include="CodeBrix.Imaging.ApacheLicenseForever" Version="1.0.248.1113" />
   </ItemGroup>
 
   <ItemGroup>

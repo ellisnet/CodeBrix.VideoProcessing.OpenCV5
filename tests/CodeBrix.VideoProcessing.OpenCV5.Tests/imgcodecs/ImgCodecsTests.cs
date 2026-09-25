@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
-using SkiaSharp;
 using Xunit;
 
 using CodeBrix.Imaging.Formats;
@@ -17,6 +16,8 @@ using CodeBrix.Imaging.Formats.Tiff;
 // types this file resolves unqualified from its parent namespace. The Formats
 // namespaces above have no such overlap.
 using ImagingImage = CodeBrix.Imaging.Image;
+using ImagingRgba32 = CodeBrix.Imaging.PixelFormats.Rgba32;
+using ImagingRgba32Image = CodeBrix.Imaging.Image<CodeBrix.Imaging.PixelFormats.Rgba32>;
 
 #pragma warning disable CA1031
 
@@ -88,14 +89,7 @@ public class ImgCodecsTests : TestBase
         const string fileName = "_data/image/imread_にほんご日本語.png";
 
         // Create test data
-        {
-            using var bitmap = new SKBitmap(10, 10);
-            bitmap.Erase(SKColors.Red);
-            using var image = SKImage.FromBitmap(bitmap);
-            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-            using var fs = File.Create(fileName);
-            data.SaveTo(fs);
-        }
+        WriteDummyPng(fileName);
 
         Assert.True(File.Exists(fileName), $"File '{fileName}' not found");
 
@@ -420,7 +414,7 @@ public class ImgCodecsTests : TestBase
     public void ImDecode(string imageFormatName)
     {
         // All four formats are encoded here from mandrill.png by an independent encoder.
-        // Tiff and Bmp used to come from pre-generated fixture files because SkiaSharp
+        // Tiff and Bmp used to come from pre-generated fixture files because the earlier encoder
         // cannot encode them; CodeBrix.Imaging can, so every case is now generated the
         // same way and the decoded bytes are guaranteed to match the source image.
         const string sourcePath = "_data/image/mandrill.png";
@@ -517,19 +511,19 @@ public class ImgCodecsTests : TestBase
         _ = Path.GetFullPath(path);
 
         var tempFileName = Path.GetTempFileName();
-        {
-            using var bitmap = new SKBitmap(10, 10);
-            bitmap.Erase(SKColors.Red);
-            using var image = SKImage.FromBitmap(bitmap);
-            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-            using (var fs = File.Create(tempFileName))
-            {
-                data.SaveTo(fs);
-            }
-        }
+        WriteDummyPng(tempFileName);
 
         File.Move(tempFileName, path, true);
         Assert.True(File.Exists(path), $"File '{path}' not found");
+    }
+
+    // Writes a 10x10 solid-red PNG with CodeBrix.Imaging, an encoder independent of the
+    // OpenCV decode path under test.
+    private static void WriteDummyPng(string path)
+    {
+        using var image = new ImagingRgba32Image(10, 10, new ImagingRgba32(255, 0, 0, 255), PngFormat.Instance);
+        using var fs = File.Create(path);
+        image.Save(fs, new PngEncoder());
     }
 
     // Re-encodes an image file into another format in memory, so the encode side stays
@@ -544,8 +538,8 @@ public class ImgCodecsTests : TestBase
 
     // Reads only Width/Height metadata via an independent decoder. CodeBrix.Imaging
     // covers every format these tests exercise (png/jpg/bmp/tiff), so no per-format
-    // branching is needed — previously this split between SkiaSharp and LibTiff.NET
-    // because SkiaSharp cannot read tiff.
+    // branching is needed — previously this split between two libraries because the earlier
+    // one could not read tiff.
     private static (int Width, int Height) IdentifyImage(string path)
     {
         var info = ImagingImage.Identify(path);

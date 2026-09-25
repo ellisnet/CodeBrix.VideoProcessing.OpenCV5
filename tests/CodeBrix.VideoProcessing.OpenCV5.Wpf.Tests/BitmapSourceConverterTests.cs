@@ -5,8 +5,15 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using CodeBrix.Imaging.Formats.Png;
+using CodeBrix.Imaging.PixelFormats;
 using Xunit;
+
+// Aliased: System.Windows.Controls.Image is also in scope in this file.
+using ImagingRgb24Image = CodeBrix.Imaging.Image<CodeBrix.Imaging.PixelFormats.Rgb24>;
+using ImagingRgba32Image = CodeBrix.Imaging.Image<CodeBrix.Imaging.PixelFormats.Rgba32>;
 
 #pragma warning disable xUnit1004 // Test methods should not be skipped
 
@@ -60,6 +67,48 @@ public class BitmapSourceConverterTests : CodeBrix.VideoProcessing.OpenCV5.Tests
             var bs = CodeBrix.VideoProcessing.OpenCV5.Wpf.BitmapSourceConverter.ToBitmapSource(mat);
             AssertPixelValue<ushort>(blueColor16, bs); // R is swapped for B
         }
+    }
+
+    [Fact]
+    public void ImagingImageRgb24ToBitmapSource()
+    {
+        // Rgb24 has no alpha, so the PNG round-trip decodes to WPF's Bgr24.
+        using var image = new ImagingRgb24Image(1, 1, new Rgb24(200, 30, 10), PngFormat.Instance);
+
+        var bs = image.ToBitmapSource();
+
+        Assert.Equal(1, bs.PixelWidth);
+        Assert.Equal(1, bs.PixelHeight);
+        Assert.Equal(PixelFormats.Bgr24, bs.Format);
+        Assert.True(bs.IsFrozen);
+
+        var pixels = new byte[4];
+        bs.CopyPixels(pixels, 4, 0);
+        Assert.Equal(new byte[] { 10, 30, 200 }, pixels[..3]); // B, G, R
+    }
+
+    [Fact]
+    public void ImagingImageRgba32ToBitmapSource()
+    {
+        // Rgba32 keeps its alpha channel, so the round-trip decodes to WPF's Bgra32.
+        using var image = new ImagingRgba32Image(2, 1, new Rgba32(0, 128, 255, 77), PngFormat.Instance);
+
+        var bs = image.ToBitmapSource();
+
+        Assert.Equal(2, bs.PixelWidth);
+        Assert.Equal(1, bs.PixelHeight);
+        Assert.Equal(PixelFormats.Bgra32, bs.Format);
+
+        var pixels = new byte[8];
+        bs.CopyPixels(pixels, 8, 0);
+        Assert.Equal(new byte[] { 255, 128, 0, 77, 255, 128, 0, 77 }, pixels); // B, G, R, A per pixel
+    }
+
+    [Fact]
+    public void ImagingImageToBitmapSourceNullThrows()
+    {
+        CodeBrix.Imaging.Image image = null!;
+        Assert.Throws<ArgumentNullException>(() => image.ToBitmapSource());
     }
 
     /// <summary>

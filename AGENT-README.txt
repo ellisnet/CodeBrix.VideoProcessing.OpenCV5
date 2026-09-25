@@ -60,7 +60,7 @@ NuGet dependencies
     documentation files. That is why the core and the native package must BOTH
     be referenced explicitly: neither pulls the other in.
   * The .Wpf package depends on the managed core package and on
-    System.Drawing.Common.
+    CodeBrix.Imaging.ApacheLicenseForever (for the Image -> BitmapSource overload).
 
 WHICH PACKAGES DO I REFERENCE
 -----------------------------
@@ -1678,7 +1678,7 @@ BitmapSourceConverter
     static BitmapSource ToBitmapSource(this Mat src, int horizontalResolution,
                      int verticalResolution, PixelFormat pixelFormat,
                      BitmapPalette palette)
-    static BitmapSource ToBitmapSource(this System.Drawing.Bitmap src)
+    static BitmapSource ToBitmapSource(this CodeBrix.Imaging.Image src)  // PNG round-trip
     static Mat  ToMat(this BitmapSource src)
     static void ToMat(this BitmapSource src, Mat dst)
 

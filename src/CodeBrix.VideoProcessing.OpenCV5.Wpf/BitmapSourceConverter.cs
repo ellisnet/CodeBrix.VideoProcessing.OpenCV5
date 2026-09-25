@@ -1,13 +1,15 @@
 #if WINDOWS
 using System;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using CodeBrix.Imaging.Formats.Png;
 using PixelFormat = System.Windows.Media.PixelFormat;
+// Aliased rather than importing the CodeBrix.Imaging root namespace: that namespace also
+// declares Point, Size and Color, which would collide with the OpenCV5 types used here.
+using ImagingImage = CodeBrix.Imaging.Image;
 
 namespace CodeBrix.VideoProcessing.OpenCV5.Wpf; //was previously: OpenCvSharp.WpfExtensions;
 
@@ -43,39 +45,33 @@ public static class BitmapSourceConverter
         src.ToWriteableBitmap(horizontalResolution, verticalResolution, pixelFormat, palette);
 
     /// <summary>
-    /// Converts System.Drawing.Bitmap to BitmapSource.
+    /// Converts a CodeBrix.Imaging <see cref="CodeBrix.Imaging.Image"/> to BitmapSource.
     /// </summary>
-    /// <param name="src">Input System.Drawing.Bitmap</param>
-    /// <remarks>http://www.codeproject.com/Articles/104929/Bitmap-to-BitmapSource</remarks>
+    /// <param name="src">Input CodeBrix.Imaging image (any pixel type)</param>
+    /// <remarks>
+    /// The image is encoded to PNG in memory and decoded by WPF's own BitmapDecoder with
+    /// PreservePixelFormat, so the resulting BitmapSource keeps the source's channel layout
+    /// (for example an Rgb24 image yields Bgr24, an Rgba32 image yields Bgra32).
+    /// Originally: http://www.codeproject.com/Articles/104929/Bitmap-to-BitmapSource
+    /// </remarks>
     /// <returns>BitmapSource</returns>
-    public static BitmapSource ToBitmapSource(this Bitmap src)
+    public static BitmapSource ToBitmapSource(this ImagingImage src)
     {
         if (src is null)
             throw new ArgumentNullException(nameof(src));
 
-        if (Application.Current?.Dispatcher is null)
-        {
-            using var memoryStream = new MemoryStream();
-            src.Save(memoryStream, ImageFormat.Png);
-            return CreateBitmapSourceFromBitmap(memoryStream);
-        }
+        using var memoryStream = new MemoryStream();
+        src.Save(memoryStream, new PngEncoder());
+        memoryStream.Seek(0, SeekOrigin.Begin);
 
-        using (var memoryStream = new MemoryStream())
-        {
-            // You need to specify the image format to fill the stream. 
-            // I'm assuming it is PNG
-            src.Save(memoryStream, ImageFormat.Png);
-            memoryStream.Seek(0, SeekOrigin.Begin);
+        // Make sure to create the bitmap in the UI thread when a WPF application is running
+        if (Application.Current?.Dispatcher is not null && IsInvokeRequired())
+            return (BitmapSource) Application.Current.Dispatcher.Invoke(
+                new Func<Stream, BitmapSource>(CreateBitmapSourceFromBitmap),
+                DispatcherPriority.Normal,
+                memoryStream);
 
-            // Make sure to create the bitmap in the UI thread
-            if (IsInvokeRequired())
-                return (BitmapSource) Application.Current.Dispatcher.Invoke(
-                    new Func<Stream, BitmapSource>(CreateBitmapSourceFromBitmap),
-                    DispatcherPriority.Normal,
-                    memoryStream);
-
-            return CreateBitmapSourceFromBitmap(memoryStream);
-        }
+        return CreateBitmapSourceFromBitmap(memoryStream);
     }
 
     // http://www.codeproject.com/Articles/104929/Bitmap-to-BitmapSource
